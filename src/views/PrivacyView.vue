@@ -24,7 +24,7 @@ function goBack() {
       <!-- Encabezado / Banner -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl">
         <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+          <div class="w-10 h-10 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
             <AppIcon name="lucide:shield-check" :size="20" />
           </div>
           <div>
@@ -41,7 +41,7 @@ function goBack() {
       <!-- Sección 1: Introducción y Filosofía -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:info" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:info" :size="18" class-name="text-green-400" />
           1. Introducción y Filosofía de Privacidad
         </h2>
         <p>
@@ -55,7 +55,7 @@ function goBack() {
       <!-- Sección 2: Datos que recopilamos y dónde residen -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:database" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:database" :size="18" class-name="text-green-400" />
           2. Datos Almacenados y Almacenamiento Local
         </h2>
         <p>
@@ -76,16 +76,16 @@ function goBack() {
       <!-- Sección 3: Uso de la API de Google Drive -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:cloud" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:cloud" :size="18" class-name="text-green-400" />
           3. Uso de la API de Google Drive y Permisos OAuth
         </h2>
         <p>
           La aplicación ofrece una funcionalidad opcional de sincronización y respaldo con tu cuenta personal de Google Drive. Cuando decides conectar tu cuenta de Google:
         </p>
         
-        <div class="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-2xl flex flex-col gap-2">
-          <p class="font-semibold text-indigo-300">Permiso solicitado (Scope):</p>
-          <code class="text-xs font-mono bg-dark-950 px-2 py-1 rounded text-indigo-200 break-all">
+        <div class="bg-green-500/10 border border-green-500/20 p-4 rounded-2xl flex flex-col gap-2">
+          <p class="font-semibold text-green-300">Permiso solicitado (Scope):</p>
+          <code class="text-xs font-mono bg-dark-950 px-2 py-1 rounded text-green-200 break-all">
             https://www.googleapis.com/auth/drive.file
           </code>
           <p class="text-xs text-slate-300 mt-1">
@@ -113,7 +113,7 @@ function goBack() {
             href="https://developers.google.com/terms/api-services-user-data-policy"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-indigo-400 underline hover:text-indigo-300"
+            class="text-green-400 underline hover:text-green-300"
           >
             Política de Datos del Usuario de los Servicios de API de Google
           </a>, incluidos los requisitos de <strong>Uso Limitado (Limited Use)</strong>:
@@ -129,7 +129,7 @@ function goBack() {
       <!-- Sección 5: Control del Usuario y Revocación -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:user-x" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:user-x" :size="18" class-name="text-green-400" />
           5. Control, Eliminación de Datos y Desconexión
         </h2>
         <p>
@@ -137,7 +137,7 @@ function goBack() {
         </p>
         <ul class="list-disc list-inside space-y-1 pl-2 text-slate-300">
           <li><strong>Cerrar sesión / Desconectar:</strong> Puedes pulsar el botón "Desconectar" en los Ajustes de la aplicación en cualquier momento para revocar el token de acceso.</li>
-          <li><strong>Eliminar permisos en Google:</strong> Puedes revocar el acceso de la aplicación en cualquier momento desde tu panel de seguridad de Google: <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline">myaccount.google.com/permissions</a>.</li>
+          <li><strong>Eliminar permisos en Google:</strong> Puedes revocar el acceso de la aplicación en cualquier momento desde tu panel de seguridad de Google: <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" class="text-green-400 underline">myaccount.google.com/permissions</a>.</li>
           <li><strong>Eliminar el respaldo:</strong> Puedes eliminar el archivo <code class="font-mono text-xs bg-dark-950 px-1 py-0.5 rounded text-slate-200">rubikbld_backup.json</code> directamente desde tu Google Drive.</li>
           <li><strong>Borrar datos locales:</strong> Puedes limpiar el almacenamiento del navegador en cualquier momento para borrar IndexedDB por completo.</li>
         </ul>
@@ -146,7 +146,7 @@ function goBack() {
       <!-- Sección 6: Contacto y Código Abierto -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:mail" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:mail" :size="18" class-name="text-green-400" />
           6. Contacto y Código Abierto
         </h2>
         <p>
@@ -156,7 +156,7 @@ function goBack() {
           href="https://github.com/EDGAR-BRI/rubikbld"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-indigo-400 hover:underline flex items-center gap-1.5 font-medium"
+          class="text-green-400 hover:underline flex items-center gap-1.5 font-medium"
         >
           <AppIcon name="lucide:github" :size="16" />
           <span>https://github.com/EDGAR-BRI/rubikbld</span>

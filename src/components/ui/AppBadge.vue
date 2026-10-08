@@ -11,8 +11,8 @@ withDefaults(
 )
 
 const variantClasses: Record<string, string> = {
-  primary: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30',
-  accent: 'bg-purple-500/15 text-purple-400 border border-purple-500/30',
+  primary: 'bg-green-500/15 text-green-400 border border-green-500/30',
+  accent: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
   success: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
   warning: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
   danger: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
@@ -29,7 +29,7 @@ const variantClasses: Record<string, string> = {
 <template>
   <span
     :class="[
-      'inline-flex items-center justify-center font-medium rounded-full',
+      'inline-flex items-center justify-center font-medium rounded-md',
       size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm',
       variantClasses[variant] || variantClasses.neutral,
     ]"

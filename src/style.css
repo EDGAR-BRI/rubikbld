@@ -84,7 +84,7 @@
 .swal2-popup {
   background: #0c111d !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 1.25rem !important;
+  border-radius: 4px !important;
   color: #f8fafc !important;
   font-family: inherit !important;
   padding: 1.5rem !important;
@@ -98,7 +98,7 @@
   grid-template-columns: min-content 1fr min-content !important;
   align-items: center !important;
   padding: 0.75rem 1rem !important;
-  border-radius: 1rem !important;
+  border-radius: 3px !important;
   gap: 0 0.75rem !important;
   width: auto !important;
   max-width: calc(100vw - 2rem) !important;
@@ -139,23 +139,23 @@
 .swal2-popup.swal2-toast .swal2-timer-progress-bar {
   grid-column: 1 / 4 !important;
   grid-row: 99 / 99 !important;
-  background: #6366f1 !important;
+  background: #22c55e !important;
   height: 3px !important;
 }
 
 .swal2-styled.swal2-confirm {
-  background: #6366f1 !important;
-  border-radius: 0.75rem !important;
+  background: #16a34a !important;
+  border-radius: 2px !important;
   font-weight: 600 !important;
   font-size: 0.875rem !important;
   padding: 0.6rem 1.25rem !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3) !important;
 }
 
 .swal2-styled.swal2-cancel {
   background: #171f33 !important;
   border: 1px solid #232f4c !important;
-  border-radius: 0.75rem !important;
+  border-radius: 2px !important;
   font-weight: 600 !important;
   font-size: 0.875rem !important;
   color: #cbd5e1 !important;
@@ -183,43 +183,77 @@
   }
 }
 
-/* Sube completamente desde abajo de la pantalla (100vh) */
+/* En móvil: aparece completamente desde abajo (100% de su propia altura) y sube hasta su tamaño real */
 @keyframes sheetSlideUp {
-  0% {
-    transform: translate3d(0, 100vh, 0);
+  from {
+    transform: translate3d(0, 100%, 0);
   }
-  100% {
+  to {
     transform: translate3d(0, 0, 0);
   }
 }
 
-/* Baja completamente hacia abajo de la pantalla (100vh) */
+/* En móvil: baja completamente hacia abajo (100% de su propia altura) hasta ocultarse */
 @keyframes sheetSlideDown {
-  0% {
+  from {
     transform: translate3d(0, 0, 0);
   }
-  100% {
-    transform: translate3d(0, 100vh, 0);
+  to {
+    transform: translate3d(0, 100%, 0);
   }
 }
 
 .backdrop-enter-active {
-  animation: backdropFadeIn 0.45s ease-out both;
+  animation: backdropFadeIn 0.32s ease-out both;
 }
 
 .backdrop-leave-active {
-  animation: backdropFadeOut 0.35s ease-in both;
+  animation: backdropFadeOut 0.25s ease-in both;
 }
 
-/* Curva nativa iOS/Android (Cubic-bezier) a 0.52s para una subida fluida y visible desde abajo completo */
+/* Curva nativa fluida iOS/Android a 0.35s para subida progresiva y natural desde abajo */
 .bottom-sheet-enter-active {
-  animation: sheetSlideUp 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: sheetSlideUp 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both;
   will-change: transform;
 }
 
 .bottom-sheet-leave-active {
-  animation: sheetSlideDown 0.38s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: sheetSlideDown 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
   will-change: transform;
 }
+
+/* En pantallas de escritorio (sm+): tarjeta centrada con fade y ligera escala natural */
+@media (min-width: 640px) {
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 16px, 0) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes modalFadeOut {
+    from {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0) scale(0.96);
+    }
+  }
+
+  .bottom-sheet-enter-active {
+    animation: modalFadeIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .bottom-sheet-leave-active {
+    animation: modalFadeOut 0.18s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+}
+
 
 

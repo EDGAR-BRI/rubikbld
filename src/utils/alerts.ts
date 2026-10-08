@@ -4,7 +4,7 @@ import 'sweetalert2/dist/sweetalert2.min.css'
 const swalDark: SweetAlertOptions = {
   background: '#0c111d',
   color: '#f8fafc',
-  confirmButtonColor: '#6366f1',
+  confirmButtonColor: '#16a34a',
   cancelButtonColor: '#1e293b',
   showCloseButton: true,
   customClass: {
@@ -235,7 +235,7 @@ export const confirmResetScheme = () => {
         <p style="margin-bottom: 0.75rem;">
           Esta acción reconfigurará todas las letras del cubo con el estándar <b>Speffz 3x3</b>:
         </p>
-        <div style="background: #111726; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 0.75rem; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 0.75rem;">
+        <div style="background: #111726; border: 1px solid #1e293b; border-radius: 2px; padding: 0.75rem; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 0.75rem;">
           <div>• Cara <b>U</b>: A, B, C, D</div>
           <div>• Cara <b>L</b>: E, F, G, H</div>
           <div>• Cara <b>F</b>: I, J, K, L</div>
@@ -328,12 +328,12 @@ export const showPwaInstallInstructions = (isIOS: boolean) => {
           <p style="margin-bottom: 0.75rem;">
             Para tener Memo Cube como aplicación nativa en tu pantalla de inicio:
           </p>
-          <div style="background: #111726; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 0.85rem; font-size: 0.85rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.6rem;">
-            <div>1. Toca el botón <b>Compartir</b> <span style="font-size: 1.1em; color: #818cf8;">⎋</span> en Safari.</div>
+          <div style="background: #111726; border: 1px solid #1e293b; border-radius: 2px; padding: 0.85rem; font-size: 0.85rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.6rem;">
+            <div>1. Toca el botón <b>Compartir</b> <span style="font-size: 1.1em; color: #4ade80;">⎋</span> en Safari.</div>
             <div>2. Desplázate hacia abajo y selecciona <b>«Añadir a pantalla de inicio»</b>.</div>
             <div>3. Pulsa <b>«Añadir»</b> en la esquina superior derecha.</div>
           </div>
-          <p style="margin-top: 0.75rem; font-size: 0.775rem; color: #818cf8;">
+          <p style="margin-top: 0.75rem; font-size: 0.775rem; color: #4ade80;">
             ✨ Podrás abrirla a pantalla completa y practicar 100% offline.
           </p>
         </div>
@@ -354,11 +354,11 @@ export const showPwaInstallInstructions = (isIOS: boolean) => {
         <p style="margin-bottom: 0.75rem;">
           Puedes instalar la aplicación directamente desde tu navegador:
         </p>
-        <div style="background: #111726; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 0.85rem; font-size: 0.85rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.6rem;">
+        <div style="background: #111726; border: 1px solid #1e293b; border-radius: 2px; padding: 0.85rem; font-size: 0.85rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.6rem;">
           <div>• <b>En Android (Chrome / Brave / Edge):</b> Pulsa el menú (<b>⋮</b>) y selecciona <b>«Instalar aplicación»</b> o <b>«Añadir a la pantalla principal»</b>.</div>
-          <div>• <b>En Ordenador:</b> Pulsa el icono de instalación <span style="color: #818cf8;">⊕</span> situado al final de la barra de direcciones.</div>
+          <div>• <b>En Ordenador:</b> Pulsa el icono de instalación <span style="color: #4ade80;">⊕</span> situado al final de la barra de direcciones.</div>
         </div>
-        <p style="margin-top: 0.75rem; font-size: 0.775rem; color: #818cf8;">
+        <p style="margin-top: 0.75rem; font-size: 0.775rem; color: #4ade80;">
           ⚡ Funciona al instante, sin descargas pesadas ni tiendas de apps.
         </p>
       </div>

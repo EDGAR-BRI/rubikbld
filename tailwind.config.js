@@ -7,6 +7,16 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      borderRadius: {
+        'none': '0px',
+        'sm': '1px',
+        DEFAULT: '2px',
+        'md': '1px',
+        'lg': '2px',
+        'xl': '2px',
+        '2xl': '3px',
+        '3xl': '4px',
+      },
       colors: {
         dark: {
           950: '#070a10',
@@ -17,9 +27,9 @@ export default {
           600: '#324269',
         },
         bld: {
-          primary: '#6366f1',
-          accent: '#8b5cf6',
-          success: '#10b981',
+          primary: '#22c55e',
+          accent: '#16a34a',
+          success: '#22c55e',
           danger: '#ef4444',
           warning: '#f59e0b',
           info: '#06b6d4',

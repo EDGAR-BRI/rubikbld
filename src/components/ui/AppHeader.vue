@@ -39,7 +39,7 @@ function goToHome() {
       <button
         v-if="!showBack"
         type="button"
-        class="shrink-0 flex items-center focus:outline-none focus:ring-2 focus:ring-indigo-500/40 rounded-lg md:hidden cursor-pointer active:scale-95 transition-transform"
+        class="shrink-0 flex items-center focus:outline-none focus:ring-2 focus:ring-green-500/40 rounded-lg md:hidden cursor-pointer active:scale-95 transition-transform"
         title="Ir al inicio"
         @click="goToHome"
       >

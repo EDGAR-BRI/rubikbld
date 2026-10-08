@@ -26,11 +26,11 @@ const emit = defineEmits<{
 }>()
 
 const baseClasses =
-  'inline-flex items-center justify-center font-medium transition-all duration-150 active:scale-95 select-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:pointer-events-none'
+  'inline-flex items-center justify-center font-medium transition-all duration-150 active:scale-95 select-none focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 disabled:pointer-events-none'
 
 const variantClasses: Record<string, string> = {
   primary:
-    'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 active:bg-indigo-700',
+    'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/25 active:bg-green-700',
   secondary:
     'bg-dark-800 hover:bg-dark-700 text-slate-200 border border-dark-700 active:bg-dark-900',
   success:

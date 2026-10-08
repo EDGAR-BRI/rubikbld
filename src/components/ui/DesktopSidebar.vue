@@ -64,17 +64,17 @@ function openGithub() {
       <div class="h-16 px-4 border-b border-dark-800/80 flex items-center justify-between shrink-0">
         <button
           type="button"
-          class="flex items-center gap-3 text-left group cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/40 rounded-xl -ml-1 p-1"
+          class="flex items-center gap-3 text-left group cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-green-500/40 rounded-xl -ml-1 p-1"
           title="Ir al inicio"
           @click="navigateTo('/')"
         >
           <img
             src="/favicon.png"
             alt="Memo Cube"
-            class="w-9 h-9 rounded-xl object-contain drop-shadow-md border border-dark-700/60 bg-dark-950 p-0.5 group-hover:border-indigo-500/50 transition-colors"
+            class="w-9 h-9 rounded-xl object-contain drop-shadow-md border border-dark-700/60 bg-dark-950 p-0.5 group-hover:border-green-500/50 transition-colors"
           />
           <div>
-            <h1 class="text-sm font-black tracking-tight text-white flex items-center gap-1.5 group-hover:text-indigo-300 transition-colors">
+            <h1 class="text-sm font-black tracking-tight text-white flex items-center gap-1.5 group-hover:text-green-300 transition-colors">
               <span>Memo Cube</span>
             </h1>
             <p class="text-[11px] text-slate-400 font-medium">Flashcards 3BLD</p>
@@ -82,7 +82,7 @@ function openGithub() {
         </button>
 
         <span
-          class="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+          class="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 border border-green-500/20"
           title="Versión actual"
         >
           v{{ APP_VERSION }}
@@ -98,7 +98,7 @@ function openGithub() {
           :class="[
             'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all duration-150 group cursor-pointer',
             route.path === item.path
-              ? 'bg-indigo-600/15 text-white border border-indigo-500/30 font-semibold shadow-sm shadow-indigo-950/40'
+              ? 'bg-green-600/15 text-white border border-green-500/30 font-semibold shadow-sm shadow-green-950/40'
               : 'text-slate-300 hover:text-white hover:bg-dark-800/70 border border-transparent font-medium',
           ]"
           @click="navigateTo(item.path)"
@@ -108,7 +108,7 @@ function openGithub() {
               :class="[
                 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
                 route.path === item.path
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  ? 'bg-green-600 text-white shadow-md shadow-green-600/30'
                   : 'bg-dark-950/80 border border-dark-800 text-slate-400 group-hover:text-slate-200 group-hover:border-dark-700',
               ]"
             >
@@ -129,7 +129,7 @@ function openGithub() {
           <div class="shrink-0 flex items-center gap-1.5 ml-2">
             <span
               v-if="item.badge"
-              class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500 text-white shadow-sm"
+              class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-rose-500 text-white shadow-sm"
             >
               {{ item.badge > 99 ? '99+' : item.badge }}
             </span>
@@ -151,7 +151,7 @@ function openGithub() {
       <div class="p-2.5 rounded-xl bg-dark-950/70 border border-dark-800/90 text-[11px] text-slate-400 flex flex-col gap-1.5">
         <div class="flex items-center justify-between text-[10px] font-semibold text-slate-300">
           <span class="flex items-center gap-1">
-            <AppIcon name="lucide:keyboard" :size="12" class-name="text-indigo-400" />
+            <AppIcon name="lucide:keyboard" :size="12" class-name="text-green-400" />
             <span>Atajos en Repaso</span>
           </span>
           <span class="text-[9px] text-slate-400 font-mono">PC</span>

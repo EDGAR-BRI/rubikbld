@@ -24,7 +24,7 @@ function goBack() {
       <!-- Encabezado / Banner -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl">
         <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+          <div class="w-10 h-10 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
             <AppIcon name="lucide:file-text" :size="20" />
           </div>
           <div>
@@ -41,7 +41,7 @@ function goBack() {
       <!-- Sección 1: Aceptación de las Condiciones -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:check" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:check" :size="18" class-name="text-green-400" />
           1. Aceptación de las Condiciones
         </h2>
         <p>
@@ -52,7 +52,7 @@ function goBack() {
       <!-- Sección 2: Descripción del Servicio -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:layers" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:layers" :size="18" class-name="text-green-400" />
           2. Descripción del Servicio
         </h2>
         <p>
@@ -70,7 +70,7 @@ function goBack() {
       <!-- Sección 3: Contenido del Usuario y Propiedad Intelectual -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:sparkles" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:sparkles" :size="18" class-name="text-green-400" />
           3. Contenido del Usuario y Propiedad
         </h2>
         <p>
@@ -84,15 +84,15 @@ function goBack() {
       <!-- Sección 4: Integración con Servicios de Terceros (Google Drive) -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:cloud" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:cloud" :size="18" class-name="text-green-400" />
           4. Integración con Google Drive
         </h2>
         <p>
           La función de respaldo en Google Drive se proporciona como una comodidad sin servidor. Al conectar tu cuenta de Google:
         </p>
         <ul class="list-disc list-inside space-y-1 pl-2 text-slate-300">
-          <li>Reconoces que los servicios de Google se rigen por las <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline">Condiciones del Servicio de Google</a>.</li>
-          <li>La Aplicación interactúa con tu Google Drive utilizando exclusivamente el permiso <code class="font-mono text-xs bg-dark-950 px-1 py-0.5 rounded text-indigo-200">drive.file</code>, limitando cualquier operación a los archivos creados por la propia Aplicación.</li>
+          <li>Reconoces que los servicios de Google se rigen por las <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" class="text-green-400 underline">Condiciones del Servicio de Google</a>.</li>
+          <li>La Aplicación interactúa con tu Google Drive utilizando exclusivamente el permiso <code class="font-mono text-xs bg-dark-950 px-1 py-0.5 rounded text-green-200">drive.file</code>, limitando cualquier operación a los archivos creados por la propia Aplicación.</li>
           <li>Puedes revocar este acceso en cualquier momento desde los ajustes de la Aplicación o desde tu cuenta de Google.</li>
         </ul>
       </div>
@@ -114,7 +114,7 @@ function goBack() {
       <!-- Sección 6: Licencia de Código Abierto -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:code" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:code" :size="18" class-name="text-green-400" />
           6. Licencia de Código Abierto
         </h2>
         <p>
@@ -124,7 +124,7 @@ function goBack() {
           href="https://github.com/EDGAR-BRI/rubikbld"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-indigo-400 hover:underline flex items-center gap-1.5 font-medium"
+          class="text-green-400 hover:underline flex items-center gap-1.5 font-medium"
         >
           <AppIcon name="lucide:github" :size="16" />
           <span>https://github.com/EDGAR-BRI/rubikbld</span>
@@ -134,7 +134,7 @@ function goBack() {
       <!-- Sección 7: Modificaciones de las Condiciones -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-6 shadow-xl flex flex-col gap-3">
         <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <AppIcon name="lucide:history" :size="18" class-name="text-indigo-400" />
+          <AppIcon name="lucide:history" :size="18" class-name="text-green-400" />
           7. Modificaciones
         </h2>
         <p>

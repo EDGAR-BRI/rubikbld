@@ -51,7 +51,7 @@ function navigateTo(path: string) {
         :class="[
           'relative flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-150',
           route.path === item.path
-            ? 'text-indigo-400 font-semibold'
+            ? 'text-green-400 font-semibold'
             : 'text-slate-400 hover:text-slate-200 font-normal',
         ]"
         @click="navigateTo(item.path)"
@@ -79,7 +79,7 @@ function navigateTo(path: string) {
         <!-- Active bottom bar indicator dot -->
         <span
           v-if="route.path === item.path"
-          class="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full"
+          class="absolute bottom-1 w-1 h-1 bg-green-500 rounded-full"
         />
       </button>
     </div>

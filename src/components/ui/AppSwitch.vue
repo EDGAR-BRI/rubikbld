@@ -45,8 +45,8 @@ export default {
       :aria-checked="modelValue"
       :disabled="disabled"
       :class="[
-        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-1 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed',
-        modelValue ? 'bg-indigo-600' : 'bg-dark-700 hover:bg-dark-600',
+        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-1 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500/40 disabled:opacity-50 disabled:cursor-not-allowed',
+        modelValue ? 'bg-green-600' : 'bg-dark-700 hover:bg-dark-600',
       ]"
       @click="toggle"
     >

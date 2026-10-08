@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
 
 const props = withDefaults(
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 const inputRef = ref<HTMLInputElement | null>(null)
 
 function focus() {
-  inputRef.value?.focus()
+  inputRef.value?.focus({ preventScroll: true })
 }
 
 function select() {
@@ -41,16 +41,14 @@ function select() {
 
 function triggerFocus() {
   if (props.autofocus && !props.disabled) {
-    nextTick(() => {
-      focus()
-      select()
-    })
+    // Esperar a que concluya la animación de apertura del bottom sheet (350ms) para no provocar saltos de scroll
     setTimeout(() => {
       focus()
       select()
-    }, 60)
+    }, 360)
   }
 }
+
 
 onMounted(() => {
   triggerFocus()
@@ -94,7 +92,7 @@ function clear() {
       {{ label }}
     </label>
     <div
-      class="relative flex items-center bg-dark-900 border border-dark-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 rounded-xl transition-all"
+      class="relative flex items-center bg-dark-900 border border-dark-700 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-500/20 rounded-xl transition-all"
     >
       <div v-if="icon" class="pl-3.5 text-slate-500 pointer-events-none flex items-center">
         <AppIcon :name="icon" :size="18" />

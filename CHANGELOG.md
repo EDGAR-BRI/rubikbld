@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.10.1] - 2026-10-08
+- • style(ui): unificar paleta verde bld, transiciones modales y dependencias
+
 ## [0.10.0] - 2026-10-08
 - 🚀 feat(db): preservar pares personalizados en sincronizacion y mejorar respaldo anki
 
