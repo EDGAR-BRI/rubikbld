@@ -1,0 +1,67 @@
+name: "💡 Propuesta de Mejora o Funcionalidad"
+description: "Sugiere una nueva función o mejora para el entrenamiento 3BLD en Rubik BLD"
+title: "[FEAT]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ¡Nos encanta escuchar ideas de la comunidad BLD! 🚀
+        Describe tu propuesta para enriquecer la experiencia de memorización y práctica de pares de letras.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "¿Qué problema o necesidad resuelve esta propuesta?"
+      description: "Describe la situación actual, caso de uso o dificultad que experimentas al entrenar."
+      placeholder: "Actualmente al entrenar pares de esquinas Speffz me gustaría poder filtrar por..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Solución o funcionalidad sugerida"
+      description: "Explica de forma detallada cómo te gustaría que funcionara esta característica."
+      placeholder: "Agregar una opción en la vista de Repaso que permita..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: "Área o Módulo Afectado"
+      description: "Selecciona el área principal de la aplicación."
+      options:
+        - "Sesión de Repaso (SRS SM-2, Tarjetas 3D, Colas de estudio)"
+        - "Gestor de Pares (Matriz de pares, palabras clave, imágenes WebP)"
+        - "Esquema 3D y Letras (Cube3D, buffers UF/UFR, esquema Speffz)"
+        - "Importación / Sincronización (Anki .apkg, Google Drive, Backup JSON)"
+        - "PWA y Offline (Instalación, almacenamiento local, Service Worker)"
+        - "Interfaz y Accesibilidad (UI/UX móvil, atajos, personalización)"
+        - "Otro"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternativas consideradas"
+      description: "¿Has pensado en alguna otra solución, apaño o flujo alternativo?"
+      placeholder: "He intentado hacer esto exportando el mazo a Anki, pero..."
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: "Bocetos, referencias o capturas"
+      description: "Comparte bocetos de diseño o referencias de otras aplicaciones (Anki, CsTimer, etc.)."
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Alineación con los Principios del Proyecto"
+      options:
+        - label: "He verificado que no existe una propuesta similar en las Issues abiertas o cerradas."
+          required: true
+        - label: "Esta funcionalidad es compatible con el enfoque Mobile-First (operable a una sola mano) y 100% Offline-First."
+          required: false

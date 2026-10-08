@@ -1,0 +1,571 @@
+import fs from "node:fs";
+import path from "node:path";
+import { execSync } from "node:child_process";
+
+const PKG_PATH = path.resolve("package.json");
+const PUBSPEC_PATH = path.resolve("pubspec.yaml");
+
+const DEFAULT_CONFIG = {
+  strict: false,
+  blockSecrets: true,
+  changelog: true,
+  changelogFile: "CHANGELOG.md",
+  rules: {
+    major: ["breaking"],
+    minor: ["feat", "ui"],
+    patch: ["fix", "style", "perf", "refactor"]
+  }
+};
+
+/**
+ * Limpia comentarios // y /* *\/ de JSON antes de parsear
+ */
+function stripJsonComments(str) {
+  return str.replace(/\"|"(?:\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g, (m, g) => (g ? "" : m));
+}
+
+/**
+ * Carga jerarquía de configuración con soporte para comentarios:
+ * 1. Defaults base
+ * 2. Sobrescrito por ~/.autoversion.json (global)
+ * 3. Sobrescrito por ./.autoversion.json (local)
+ */
+function loadConfig() {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const globalPath = path.resolve(homeDir, ".autoversion.json");
+  const localPath = path.resolve(".autoversion.json");
+
+  let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+  function mergeIntoConfig(target, source) {
+    if (!source) return;
+    if (source.strict !== undefined) target.strict = Boolean(source.strict);
+    if (source.blockSecrets !== undefined) target.blockSecrets = Boolean(source.blockSecrets);
+    if (source.changelog !== undefined) target.changelog = Boolean(source.changelog);
+    if (source.changelogFile) target.changelogFile = source.changelogFile;
+
+    if (source.rules) {
+      if (Array.isArray(source.rules.major) && source.rules.major.length > 0) {
+        target.rules.major = [...new Set([...target.rules.major, ...source.rules.major])];
+      }
+      if (Array.isArray(source.rules.minor) && source.rules.minor.length > 0) {
+        target.rules.minor = [...new Set([...target.rules.minor, ...source.rules.minor])];
+      }
+      if (Array.isArray(source.rules.patch) && source.rules.patch.length > 0) {
+        target.rules.patch = [...new Set([...target.rules.patch, ...source.rules.patch])];
+      }
+    }
+  }
+
+  if (homeDir && fs.existsSync(globalPath)) {
+    try {
+      const raw = fs.readFileSync(globalPath, "utf8");
+      const g = JSON.parse(stripJsonComments(raw));
+      mergeIntoConfig(config, g);
+    } catch {}
+  }
+
+  if (fs.existsSync(localPath)) {
+    try {
+      const raw = fs.readFileSync(localPath, "utf8");
+      const l = JSON.parse(stripJsonComments(raw));
+      mergeIntoConfig(config, l);
+    } catch {}
+  }
+
+  return config;
+}
+
+/**
+ * Bloquea commit si detecta secretos en staging
+ */
+function checkSecretLeaks() {
+  try {
+    const diff = execSync("git diff --cached", { encoding: "utf8" });
+    if (!diff) return false;
+
+    const patterns = [
+      { name: "Clave Privada RSA / OpenSSH", regex: /BEGIN (?:RSA|DSA|EC|OPENSSH|PGP) PRIVATE KEY/ },
+      { name: "Token Secreto de Stripe", regex: /sk_live_[0-9a-zA-Z]{20,}/ },
+      { name: "Token Personal de GitHub", regex: /(?:ghp_[0-9a-zA-Z]{36}|github_pat_[0-9a-zA-Z_]{82})/ },
+      { name: "Access Key de AWS", regex: /AKIA[0-9A-Z]{16}/ },
+      { name: "API Key de Google", regex: /AIza[0-9A-Za-z\-_]{35}/ }
+    ];
+
+    for (const p of patterns) {
+      if (p.regex.test(diff)) {
+        console.error(`\n❌ [ERROR DE SEGURIDAD] Se detectó una credencial sensible en staging: ${p.name}`);
+        console.error(`🚫 Commit cancelado automáticamente para evitar fuga de secretos.`);
+        console.error(`ℹ️  Revisa tus archivos staged antes de confirmar el commit.\n`);
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
+function findGitCommitCmdline() {
+  try {
+    let curr = process.ppid;
+    while (curr && curr > 1) {
+      if (fs.existsSync(`/proc/${curr}/cmdline`)) {
+        const rawCmd = fs.readFileSync(`/proc/${curr}/cmdline`, "utf8");
+        if (rawCmd) {
+          const cmdline = rawCmd.split("\0").filter(Boolean);
+          const isGit = cmdline.some(arg => arg === "git" || arg.endsWith("/git") || arg.endsWith("git.exe"));
+          const isCommit = cmdline.includes("commit");
+          if (isGit && isCommit) return cmdline;
+        }
+        const stat = fs.readFileSync(`/proc/${curr}/stat`, "utf8").split(" ");
+        curr = parseInt(stat[3], 10);
+      } else {
+        break;
+      }
+    }
+  } catch {}
+
+  try {
+    let curr = process.ppid;
+    for (let i = 0; i < 6 && curr > 1; i++) {
+      const out = execSync(`ps -p ${curr} -o ppid=,command=`, { encoding: "utf8" }).trim();
+      if (!out) break;
+      const parts = out.split(/\s+/);
+      const parentPid = parseInt(parts[0], 10);
+      const cmdStr = out.slice(parts[0].length).trim();
+      if (/\bgit(\.exe)?\b.*commit/.test(cmdStr)) {
+        return cmdStr.match(/(?:[^\s"'"]+|"[^"]*"|'[^']*')+/g) || cmdStr.split(" ");
+      }
+      curr = parentPid;
+    }
+  } catch {}
+
+  if (process.platform === "win32") {
+    try {
+      const cmd = execSync(`powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter \"ProcessId = ${process.ppid}\").CommandLine"`, { encoding: "utf8" });
+      if (cmd && /\bgit(\.exe)?\b.*commit/.test(cmd)) {
+        return cmd.match(/(?:[^\s"'"]+|"[^"]*"|'[^']*')+/g) || cmd.split(" ");
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function extractCommitMessage(cmdline) {
+  if (!cmdline || !Array.isArray(cmdline)) return "";
+  const clean = str => (str ? str.replace(/^["'"]|["'"]$/g, "").trim() : "");
+
+  for (let i = 0; i < cmdline.length; i++) {
+    const arg = cmdline[i];
+    if (arg === "-m" || arg === "--message") {
+      if (cmdline[i + 1]) return clean(cmdline[i + 1]);
+    } else if (arg.startsWith("--message=")) {
+      return clean(arg.slice("--message=".length));
+    } else if (arg.startsWith("-m=")) {
+      return clean(arg.slice(3));
+    } else if (arg === "-F" || arg === "--file") {
+      const filePath = clean(cmdline[i + 1]);
+      if (filePath && filePath !== "-" && fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, "utf8").trim();
+      }
+    } else if (arg.startsWith("--file=") || arg.startsWith("-F=")) {
+      const filePath = clean(arg.split("=")[1]);
+      if (filePath && filePath !== "-" && fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, "utf8").trim();
+      }
+    }
+  }
+  return "";
+}
+
+function calculateNextSemVer(currentVersion, bumpType) {
+  const versionParts = currentVersion.split("-")[0].split(".").map(n => parseInt(n, 10) || 0);
+  while (versionParts.length < 3) versionParts.push(0);
+  let [maj, min, pat] = versionParts;
+
+  if (bumpType === "major") return `${maj + 1}.0.0`;
+  if (bumpType === "minor") return `${maj}.${min + 1}.0`;
+  if (bumpType === "patch") return `${maj}.${min}.${pat + 1}`;
+  return currentVersion;
+}
+
+function getFlutterVersion() {
+  if (!fs.existsSync(PUBSPEC_PATH)) return null;
+  try {
+    const content = fs.readFileSync(PUBSPEC_PATH, "utf8");
+    const match = content.match(/^[ \t]*version:[ \t]*([^\s#]+)/m);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+function getNodeVersion() {
+  if (!fs.existsSync(PKG_PATH)) return null;
+  try {
+    const pkg = JSON.parse(fs.readFileSync(PKG_PATH, "utf8"));
+    return pkg.version || null;
+  } catch {
+    return null;
+  }
+}
+
+function isFlutterVersionModifiedInDiff(diff) {
+  if (!diff) return false;
+  return /^\+[ \t]*version:[ \t]*[0-9]/m.test(diff);
+}
+
+function isNodeVersionModifiedInDiff(diff) {
+  if (!diff) return false;
+  return /^\+[ \t]*"version"[ \t]*:[ \t]*"[0-9]/m.test(diff);
+}
+
+function bumpFlutterPubspec(bumpType) {
+  if (!fs.existsSync(PUBSPEC_PATH)) return null;
+  const content = fs.readFileSync(PUBSPEC_PATH, "utf8");
+  const match = content.match(/^[ \t]*version:[ \t]*([0-9]+)\.([0-9]+)\.([0-9]+)(?:\+([0-9]+))?/m);
+  if (!match) return null;
+
+  let [_, maj, min, pat, build] = match.map(n => (n !== undefined ? parseInt(n, 10) : 0));
+  const nextBuild = (build || 0) + 1;
+
+  if (bumpType === "major") { maj += 1; min = 0; pat = 0; }
+  else if (bumpType === "minor") { min += 1; pat = 0; }
+  else if (bumpType === "patch") { pat += 1; }
+
+  const newVersion = `${maj}.${min}.${pat}+${nextBuild}`;
+  const updated = content.replace(/^[ \t]*version:[ \t]*.*$/m, `version: ${newVersion}`);
+
+  fs.writeFileSync(PUBSPEC_PATH, updated);
+  execSync("git add pubspec.yaml");
+  console.log(`📱 [AutoVersion] Flutter: versión actualizada a ${newVersion} (${bumpType.toUpperCase()}) en pubspec.yaml.`);
+  return newVersion;
+}
+
+function bumpNodePackage(bumpType) {
+  if (!fs.existsSync(PKG_PATH)) return null;
+  const pkg = JSON.parse(fs.readFileSync(PKG_PATH, "utf8"));
+  const current = pkg.version || "0.1.0";
+  const newVersion = calculateNextSemVer(current, bumpType);
+
+  pkg.version = newVersion;
+  fs.writeFileSync(PKG_PATH, JSON.stringify(pkg, null, 2) + "\n");
+  execSync("git add package.json");
+  console.log(`📦 [AutoVersion] Node.js: versión actualizada a ${newVersion} (${bumpType.toUpperCase()}) en package.json.`);
+  return newVersion;
+}
+
+function getBumpType(msg, config) {
+  if (!msg) return null;
+  msg = msg.trim();
+  if (msg.startsWith("Merge ") || msg.startsWith("Revert ")) return null;
+
+  const firstLine = msg.split("\n")[0].trim();
+
+  // 1. Breaking change explícito con "!" antes de ":" o "BREAKING CHANGE"
+  if (/^[a-z]+(\([^\)]+\))?!:/.test(firstLine) || /BREAKING CHANGE/i.test(msg)) {
+    return "major";
+  }
+
+  // 2. Reglas MAJOR
+  for (const prefix of config.rules.major || []) {
+    const rx = new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\([^\\)]+\\))?:", "i");
+    if (rx.test(firstLine)) return "major";
+  }
+
+  // 3. Reglas MINOR
+  for (const prefix of config.rules.minor || []) {
+    const rx = new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\([^\\)]+\\))?:", "i");
+    if (rx.test(firstLine)) return "minor";
+  }
+
+  // 4. Reglas PATCH
+  for (const prefix of config.rules.patch || []) {
+    const rx = new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\([^\\)]+\\))?:", "i");
+    if (rx.test(firstLine)) return "patch";
+  }
+
+  return null;
+}
+
+function updateChangelog(newVersion, msg, bumpType, config) {
+  if (!config.changelog || !newVersion) return false;
+  const changelogPath = path.resolve(config.changelogFile || "CHANGELOG.md");
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0];
+  const firstLine = (msg || "Actualización de versión").split("\n")[0].trim();
+
+  let icon = "•";
+  if (bumpType === "major") icon = "💥";
+  else if (firstLine.startsWith("feat")) icon = "🚀";
+  else if (firstLine.startsWith("fix")) icon = "🐛";
+  else if (firstLine.startsWith("perf")) icon = "⚡";
+  else if (firstLine.startsWith("refactor")) icon = "🛠️";
+  else if (firstLine.startsWith("chore")) icon = "🧹";
+  else if (firstLine.startsWith("hotfix")) icon = "🔥";
+  else if (firstLine.startsWith("ui")) icon = "🎨";
+
+  const entry = `- ${icon} ${firstLine}`;
+  const versionHeader = `## [${newVersion}] - ${dateStr}`;
+
+  let content = "";
+  if (fs.existsSync(changelogPath)) {
+    content = fs.readFileSync(changelogPath, "utf8");
+  } else {
+    content = "# 📋 Historial de Cambios (Changelog)\n\nTodos los cambios notables de este proyecto serán documentados en este archivo.\n\n";
+  }
+
+  if (content.includes(`## [${newVersion}]`)) {
+    if (!content.includes(firstLine)) {
+      content = content.replace(`## [${newVersion}]`, `${versionHeader}\n${entry}`);
+    }
+  } else {
+    const titleMatch = content.match(/^# [^\n]+\n+/);
+    if (titleMatch) {
+      const title = titleMatch[0];
+      const rest = content.slice(title.length);
+      content = `${title}${versionHeader}\n${entry}\n\n${rest.trimStart()}`;
+    } else {
+      content = `# 📋 Historial de Cambios (Changelog)\n\n${versionHeader}\n${entry}\n\n${content}`;
+    }
+  }
+
+  fs.writeFileSync(changelogPath, content.trim() + "\n");
+  try {
+    execSync(`git add "${path.basename(changelogPath)}"`);
+    console.log(`📝 [AutoVersion] Changelog actualizado en ${path.basename(changelogPath)}.`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fase 1: pre-commit (Intercepción CLI y bloqueo de secretos)
+ */
+function handlePreCommit() {
+  const config = loadConfig();
+
+  // Escaneo y bloqueo de credenciales sensibles
+  if (config.blockSecrets && checkSecretLeaks()) {
+    process.exit(1);
+  }
+
+  const hasNode = fs.existsSync(PKG_PATH);
+  const hasFlutter = fs.existsSync(PUBSPEC_PATH);
+
+  // Detectar si el usuario modificó manualmente la versión en staging
+  let flutterManual = false;
+  let nodeManual = false;
+
+  if (hasFlutter) {
+    try {
+      const diff = execSync("git diff --cached -U0 -- pubspec.yaml", { encoding: "utf8" });
+      if (isFlutterVersionModifiedInDiff(diff)) {
+        flutterManual = true;
+      }
+    } catch {}
+  }
+
+  if (hasNode) {
+    try {
+      const diff = execSync("git diff --cached -U0 -- package.json", { encoding: "utf8" });
+      if (isNodeVersionModifiedInDiff(diff)) {
+        nodeManual = true;
+      }
+    } catch {}
+  }
+
+  const manualVersion = (hasFlutter && flutterManual ? getFlutterVersion() : null) ||
+                        (hasNode && nodeManual ? getNodeVersion() : null);
+
+  const cmdline = findGitCommitCmdline();
+  const msg = extractCommitMessage(cmdline);
+  const bumpType = getBumpType(msg, config);
+
+  if (manualVersion) {
+    if (msg) {
+      console.log(`\nℹ️  [AutoVersion] Se detectó una versión modificada manualmente (${manualVersion}). Respetando versión del desarrollador.`);
+      if (config.changelog) {
+        updateChangelog(manualVersion, msg, bumpType, config);
+      }
+      console.log("");
+    }
+    return;
+  }
+
+  if (!bumpType) {
+    if (msg) {
+      const firstLine = msg.split("\n")[0].trim();
+      const ignored = firstLine.match(/^([a-z]+)(\([^\)]+\))?:/i);
+      if (ignored) {
+        console.log(`\nℹ️ [AutoVersion] Mensaje detectado: "${firstLine}"`);
+        console.log(`ℹ️ [AutoVersion] El tipo "${ignored[1]}" no incrementa versión según las reglas activas.`);
+        console.log(`ℹ️ [AutoVersion] Puedes añadirlo en .autoversion.json o usar "fix:" / "feat:".\n`);
+      }
+    }
+    return;
+  }
+
+  console.log(`\n🚀 [AutoVersion] Mensaje detectado (CLI): "${msg.split("\n")[0]}"`);
+  let newV = null;
+  if (hasFlutter) newV = bumpFlutterPubspec(bumpType) || newV;
+  if (hasNode) newV = bumpNodePackage(bumpType) || newV;
+
+  if (newV) {
+    updateChangelog(newV, msg, bumpType, config);
+  }
+  console.log("");
+}
+
+/**
+ * Fase commit-msg: Modo estricto para validar Conventional Commits
+ */
+function handleCommitMsg(msgFile) {
+  const config = loadConfig();
+  if (!config.strict) return;
+
+  if (!msgFile || !fs.existsSync(msgFile)) return;
+  const content = fs.readFileSync(msgFile, "utf8").trim();
+  const firstLine = content.split("\n")[0].trim();
+
+  // Ignorar commits automáticos de Git como Merge o Revert
+  if (firstLine.startsWith("Merge ") || firstLine.startsWith("Revert ")) return;
+
+  // Formato Conventional Commits: tipo(alcance)?: descripcion o tipo(alcance)!: descripcion
+  const isValid = /^[a-z]+(\([^\)]+\))?!?: .+/i.test(firstLine);
+
+  if (!isValid) {
+    console.error(`\n❌ [ERROR STRICT COMMIT] El mensaje no cumple con el estándar Conventional Commits.`);
+    console.error(`   Mensaje recibido: "${firstLine}"`);
+    console.error(`\nℹ️  Estructura obligatoria: <tipo>: <descripción>`);
+    console.error(`   Ejemplos válidos:`);
+    console.error(`   • feat: nueva pantalla de perfil`);
+    console.error(`   • fix: corrección de error en formulario`);
+    console.error(`   • chore: mantenimiento de dependencias\n`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Fase 2: post-commit (Soporte GUIs y actualización atómica)
+ */
+function handlePostCommit() {
+  if (process.env.AUTOVERSION_AMENDING === "1") return;
+
+  const config = loadConfig();
+  const hasNode = fs.existsSync(PKG_PATH);
+  const hasFlutter = fs.existsSync(PUBSPEC_PATH);
+  if (!hasNode && !hasFlutter) return;
+
+  let committedFiles = "";
+  try {
+    committedFiles = execSync("git diff-tree --no-commit-id --name-only -r --root HEAD", { encoding: "utf8" });
+  } catch {
+    return;
+  }
+
+  // Verificar si la línea de versión fue modificada en este commit
+  let flutterVersionChanged = false;
+  let nodeVersionChanged = false;
+
+  if (hasFlutter) {
+    try {
+      const diff = execSync("git diff-tree --no-commit-id -p -U0 -r --root HEAD -- pubspec.yaml", { encoding: "utf8" });
+      if (isFlutterVersionModifiedInDiff(diff)) {
+        flutterVersionChanged = true;
+      }
+    } catch {}
+  }
+
+  if (hasNode) {
+    try {
+      const diff = execSync("git diff-tree --no-commit-id -p -U0 -r --root HEAD -- package.json", { encoding: "utf8" });
+      if (isNodeVersionModifiedInDiff(diff)) {
+        nodeVersionChanged = true;
+      }
+    } catch {}
+  }
+
+  let lastMsg = "";
+  try {
+    lastMsg = execSync("git log -1 --pretty=%B", { encoding: "utf8" }).trim();
+  } catch {
+    return;
+  }
+
+  const bumpType = getBumpType(lastMsg, config);
+
+  // Si la línea de versión ya cambió en este commit:
+  if (flutterVersionChanged || nodeVersionChanged) {
+    const changelogFile = config.changelogFile || "CHANGELOG.md";
+    const changelogIncluded = committedFiles.includes(changelogFile);
+
+    // Si fue modificada manualmente (por ejemplo, desde VS Code GUI sin changelog previo),
+    // actualizar y enmendar el changelog respetando la versión manual del usuario
+    if (config.changelog && !changelogIncluded) {
+      const manualVersion = (hasFlutter && flutterVersionChanged ? getFlutterVersion() : null) ||
+                            (hasNode && nodeVersionChanged ? getNodeVersion() : null);
+      if (manualVersion) {
+        console.log(`\nℹ️  [AutoVersion] Se detectó versión modificada manualmente (${manualVersion}). Respetando versión del desarrollador.`);
+        const updated = updateChangelog(manualVersion, lastMsg, bumpType, config);
+        if (updated) {
+          try {
+            execSync("git commit --amend --no-edit", {
+              env: { ...process.env, AUTOVERSION_AMENDING: "1" },
+              stdio: "pipe"
+            });
+            console.log("✓ [AutoVersion] Changelog enmendado exitosamente en el commit.\n");
+          } catch (e) {
+            console.error("Error al enmendar changelog:", e.message);
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  if (!bumpType) {
+    const firstLine = lastMsg.split("\n")[0].trim();
+    const ignored = firstLine.match(/^([a-z]+)(\([^\)]+\))?:/i);
+    if (ignored) {
+      console.log(`\nℹ️ [AutoVersion] Mensaje detectado: "${firstLine}"`);
+      console.log(`ℹ️ [AutoVersion] El tipo "${ignored[1]}" no incrementa versión según las reglas activas.`);
+      console.log(`ℹ️ [AutoVersion] Puedes añadirlo en .autoversion.json o usar "fix:" / "feat:".\n`);
+    }
+    return;
+  }
+
+  console.log(`\n🚀 [AutoVersion] Mensaje detectado (GUI / stdin): "${lastMsg.split("\n")[0]}"`);
+  let newV = null;
+  if (hasFlutter) newV = bumpFlutterPubspec(bumpType) || newV;
+  if (hasNode) newV = bumpNodePackage(bumpType) || newV;
+
+  if (newV) {
+    updateChangelog(newV, lastMsg, bumpType, config);
+    try {
+      execSync("git commit --amend --no-edit", {
+        env: { ...process.env, AUTOVERSION_AMENDING: "1" },
+        stdio: "pipe"
+      });
+      console.log("✓ [AutoVersion] Versión y Changelog enmendados exitosamente en el commit.\n");
+    } catch (e) {
+      console.error("Error en post-commit amend:", e.message);
+    }
+  }
+}
+
+function main() {
+  try {
+    if (process.argv.includes("--commit-msg")) {
+      const idx = process.argv.indexOf("--commit-msg");
+      handleCommitMsg(process.argv[idx + 1]);
+    } else if (process.argv.includes("--post-commit")) {
+      handlePostCommit();
+    } else {
+      handlePreCommit();
+    }
+  } catch (err) {}
+}
+
+main();

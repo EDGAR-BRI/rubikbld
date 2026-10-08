@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html, body {
+    @apply bg-dark-950 text-slate-100 antialiased font-sans select-none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  #app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+
+/* Custom scrollbar for desktop/smooth touch lists */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-600;
+}
+
+/* Safe areas for mobile notches and home indicators */
+.safe-top {
+  padding-top: max(0.75rem, calc(0.75rem + env(safe-area-inset-top, 0px)));
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, calc(0.75rem + env(safe-area-inset-bottom, 0px)));
+}
+
+/* 3D Perspective for Card Flip */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* ==========================================================================
+   SWEETALERT2 DARK THEME (Estilo Cancionero)
+   ========================================================================== */
+.swal2-container {
+  z-index: 100000 !important;
+}
+
+.swal2-popup.swal2-dark-popup,
+.swal2-popup {
+  background: #0c111d !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 1.25rem !important;
+  color: #f8fafc !important;
+  font-family: inherit !important;
+  padding: 1.5rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85) !important;
+  position: relative !important;
+}
+
+.swal2-popup.swal2-toast {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: min-content 1fr min-content !important;
+  align-items: center !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 1rem !important;
+  gap: 0 0.75rem !important;
+  width: auto !important;
+  max-width: calc(100vw - 2rem) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
+  touch-action: pan-y !important;
+  user-select: none !important;
+  cursor: grab !important;
+  will-change: transform, opacity !important;
+  overflow: hidden !important;
+}
+
+.swal2-popup.swal2-toast:active,
+.swal2-popup.swal2-toast.swal2-swiping {
+  cursor: grabbing !important;
+  transition: none !important;
+}
+
+.swal2-popup.swal2-toast .swal2-title {
+  grid-column: 2 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 0.875rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  text-align: left !important;
+  color: #ffffff !important;
+}
+
+.swal2-popup.swal2-toast .swal2-html-container {
+  grid-column: 2 !important;
+  margin: 0.2rem 0 0 0 !important;
+  padding: 0 !important;
+  font-size: 0.75rem !important;
+  text-align: left !important;
+  color: #94a3b8 !important;
+}
+
+.swal2-popup.swal2-toast .swal2-timer-progress-bar {
+  grid-column: 1 / 4 !important;
+  grid-row: 99 / 99 !important;
+  background: #6366f1 !important;
+  height: 3px !important;
+}
+
+.swal2-styled.swal2-confirm {
+  background: #6366f1 !important;
+  border-radius: 0.75rem !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  padding: 0.6rem 1.25rem !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+.swal2-styled.swal2-cancel {
+  background: #171f33 !important;
+  border: 1px solid #232f4c !important;
+  border-radius: 0.75rem !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: #cbd5e1 !important;
+  padding: 0.6rem 1.25rem !important;
+}

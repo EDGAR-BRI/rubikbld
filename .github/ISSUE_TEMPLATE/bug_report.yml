@@ -1,0 +1,94 @@
+name: "🐛 Reporte de Error (Bug)"
+description: "Reporta un problema o comportamiento inesperado en Rubik BLD"
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ¡Gracias por reportar un error! 🧩
+        Por favor completa los siguientes campos con la mayor precisión posible para ayudarnos a reproducir y solucionar el problema rápidamente.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Descripción del problema"
+      description: "Explica de forma clara y concisa qué sucedió."
+      placeholder: "Al calificar una tarjeta en modo estudio, la animación se congela y no pasa a la siguiente tarjeta..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Pasos para reproducir"
+      description: "Indica paso a paso cómo recrear el comportamiento anómalo."
+      placeholder: |
+        1. Ir a la pestaña 'Estudiar'
+        2. Presionar en la tarjeta para voltearla
+        3. Hacer clic en el botón 'Bien (Good)'
+        4. Observar el bloqueo en pantalla
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Comportamiento esperado"
+      description: "¿Qué esperabas que ocurriera en condiciones normales?"
+      placeholder: "La tarjeta debería mostrar la animación de salida y cargar la siguiente tarjeta de la cola."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: "Entorno y Plataforma"
+      description: "¿Dónde se produjo el error?"
+      options:
+        - "Android — PWA Instalada (Standalone)"
+        - "Android — Navegador Web (Chrome / Firefox / Samsung)"
+        - "iOS — PWA Instalada (Pantalla de inicio - Safari)"
+        - "iOS — Navegador Web (Safari)"
+        - "Escritorio — Chrome / Edge / Brave"
+        - "Escritorio — Firefox"
+        - "Otro"
+    validations:
+      required: true
+
+  - type: input
+    id: device_info
+    attributes:
+      label: "Dispositivo y versión del sistema"
+      description: "Ejemplo: Samsung Galaxy S23 (Android 14) / iPhone 14 (iOS 17.4) / Ubuntu 24.04 (Chrome 126)"
+      placeholder: "Samsung Galaxy S23, Android 14, Chrome 126"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: connection_status
+    attributes:
+      label: "Estado de Conexión"
+      description: "¿Ocurrió con conexión a Internet o en modo Offline?"
+      options:
+        - "Offline (Sin conexión / Modo avión)"
+        - "Online (WiFi o datos móviles)"
+        - "Ocurre en ambos estados"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs_screenshots
+    attributes:
+      label: "Capturas de pantalla o logs de consola"
+      description: "Si es posible, adjunta imágenes o mensajes de la consola de desarrollo (F12 o consola remota)."
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Verificaciones previas"
+      options:
+        - label: "He buscado en las Issues abiertas y cerradas y confirmo que no está reportado previamente."
+          required: true
+        - label: "El error se reproduce en la versión más reciente de la aplicación."
+          required: true

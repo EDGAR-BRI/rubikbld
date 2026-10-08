@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "📖 Guía de Contribución (CONTRIBUTING.md)"
+    url: "https://github.com/EDGAR-BRI/rubikbld/blob/main/CONTRIBUTING.md"
+    about: "Consulta los estándares de código, Conventional Commits y arquitectura antes de abrir un Pull Request."
+  - name: "🧩 Arquitectura y Reglas 3BLD (AGENTS.md)"
+    url: "https://github.com/EDGAR-BRI/rubikbld/blob/main/AGENTS.md"
+    about: "Reglas de negocio del cubo 3BLD, buffers, exclusión física y almacenamiento offline Dexie."

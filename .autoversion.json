@@ -1,0 +1,19 @@
+{
+  // Si es true, bloquea el commit si no sigue Conventional Commits (ej: "feat: ...", "fix: ...")
+  "strict": false,
+
+  // Si es true, bloquea el commit si detecta credenciales sensibles (Stripe, GitHub, RSA, AWS, Google)
+  "blockSecrets": true,
+
+  // Generación automática del archivo CHANGELOG.md en cada incremento de versión
+  "changelog": true,
+
+  // Reglas de incremento personalizadas:
+  // Déjalas vacías [] para usar las reglas por defecto del sistema (feat -> minor, fix -> patch).
+  // Agrega prefijos adicionales aquí (ej: ["chore", "hotfix"]) para activarlos en este proyecto.
+  "rules": {
+    "major": [],
+    "minor": [],
+    "patch": []
+  }
+}

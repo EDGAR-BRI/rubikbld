@@ -1,0 +1,33 @@
+name: "❓ Pregunta, Duda o Consulta 3BLD"
+description: "Dudas sobre el esquema Speffz, configuración de buffers o uso de la PWA"
+title: "[DUDA]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ¿Tienes dudas sobre cómo usar Rubik BLD o configurar tus pares? 🧠
+        Describe tu inquietud para que podamos ayudarte o mejorar la documentación.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: "Tu consulta o duda"
+      description: "Detalla con la mayor claridad posible en qué consiste tu pregunta."
+      placeholder: "¿Cómo se gestionan los dígrafos como 'CH' en la importación de Anki? o ¿Cómo cambio el buffer sin desconfigurar mis pares existentes?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Contexto adicional"
+      description: "Esquema de letras que utilizas, buffers configurados o formato de tus archivos de importación."
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Verificaciones"
+      options:
+        - label: "He revisado la documentación del README y los ajustes de la aplicación."
+          required: true
