@@ -98,6 +98,18 @@ class GoogleDriveService {
   }
 
   /**
+   * Cierra la sesión activa y revoca el token de acceso
+   */
+  signOut(): void {
+    if (this.accessToken && (window as any).google?.accounts?.oauth2) {
+      try {
+        (window as any).google.accounts.oauth2.revoke(this.accessToken, () => {})
+      } catch {}
+    }
+    this.accessToken = null
+  }
+
+  /**
    * Busca si ya existe un archivo de respaldo en Google Drive
    */
   private async findBackupFileId(): Promise<string | null> {
@@ -132,7 +144,7 @@ class GoogleDriveService {
     const backup = {
       version: 1,
       timestamp: Date.now(),
-      appName: 'RubikBLD',
+      appName: 'Memo Cube',
       data: {
         schemes,
         pairs,
@@ -189,7 +201,7 @@ class GoogleDriveService {
       const metadata = {
         name: BACKUP_FILENAME,
         mimeType: 'application/json',
-        description: 'Copia de seguridad de pares e imágenes de Rubik BLD',
+        description: 'Copia de seguridad de pares e imágenes de Memo Cube',
       }
 
       const boundary = 'foo_bar_baz'

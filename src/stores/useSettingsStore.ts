@@ -8,10 +8,13 @@ import {
 } from '@/services/googleDrive'
 
 export const useSettingsStore = defineStore('settings', () => {
+  const defaultClientId =
+    (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() ||
+    '142729865983-vorbrki0frhrivbrsi3ga5tnnvc1ssaj.apps.googleusercontent.com'
   const srsSettings = ref<SRSSettings>({ ...DEFAULT_SRS_SETTINGS })
   const practiceOnlyCompleted = ref(true) // Solo practicar pares que ya tienen palabra configurada
   const reversePractice = ref(false) // Ver imagen/palabra primero y adivinar el par
-  const googleClientId = ref<string>('')
+  const googleClientId = ref<string>(defaultClientId)
   
   const syncStatus = ref<DriveSyncStatus>({
     isSignedIn: false,
@@ -28,8 +31,10 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
     const gClientId = await db.settings.get('google_client_id')
-    if (gClientId?.value) {
-      googleClientId.value = gClientId.value
+    if (gClientId?.value && typeof gClientId.value === 'string' && gClientId.value.trim().length > 0) {
+      googleClientId.value = gClientId.value.trim()
+    } else if (defaultClientId) {
+      googleClientId.value = defaultClientId
     }
 
     const onlyComp = await db.settings.get('practice_only_completed')
@@ -69,14 +74,19 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function signInWithGoogle() {
-    if (!googleClientId.value) {
+    const effectiveClientId = googleClientId.value.trim() || defaultClientId
+    if (!effectiveClientId) {
       syncStatus.value.error = 'Por favor ingresa tu Google Client ID en Ajustes'
       return
     }
 
+    if (!googleClientId.value) {
+      googleClientId.value = effectiveClientId
+    }
+
     syncStatus.value.error = null
     try {
-      await googleDriveService.initClient(googleClientId.value)
+      await googleDriveService.initClient(effectiveClientId)
       await googleDriveService.requestAccessToken()
       const user = await googleDriveService.fetchUserProfile()
       syncStatus.value.isSignedIn = true
@@ -132,6 +142,13 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  async function signOutFromGoogle() {
+    googleDriveService.signOut()
+    syncStatus.value.isSignedIn = false
+    syncStatus.value.user = null
+    syncStatus.value.error = null
+  }
+
   return {
     srsSettings,
     practiceOnlyCompleted,
@@ -144,6 +161,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setReversePractice,
     saveGoogleClientId,
     signInWithGoogle,
+    signOutFromGoogle,
     syncWithDrive,
     restoreFromDrive,
   }

@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.5.0] - 2026-10-08
+- 🚀 feat(sync): incorporar cierre de sesion y client id por defecto en google drive
+
 ## [0.4.0] - 2026-10-08
 - 🚀 feat(version): inyectar version de compilacion en vite y manifest pwa
 
