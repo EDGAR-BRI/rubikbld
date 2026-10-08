@@ -64,7 +64,7 @@ function getPair(r: string, c: string): PairItem | undefined {
                 <th
                   v-for="colLetter in letters"
                   :key="colLetter"
-                  class="p-2 text-xs font-mono font-bold text-indigo-400 min-w-[54px] border-r border-dark-800"
+                  class="p-2 text-xs font-mono font-bold text-green-400 min-w-[54px] border-r border-dark-800"
                 >
                   {{ colLetter }}
                 </th>
@@ -78,7 +78,7 @@ function getPair(r: string, c: string): PairItem | undefined {
               >
                 <!-- Letra de fila (Primera letra) -->
                 <td
-                  class="p-2 text-xs font-mono font-bold text-indigo-400 sticky left-0 z-10 bg-dark-900 border-r border-dark-700"
+                  class="p-2 text-xs font-mono font-bold text-green-400 sticky left-0 z-10 bg-dark-900 border-r border-dark-700"
                 >
                   {{ rowLetter }}
                 </td>
@@ -102,7 +102,7 @@ function getPair(r: string, c: string): PairItem | undefined {
                       :class="[
                         'w-full h-11 rounded-lg px-1 flex flex-col items-center justify-center transition-all select-none active:scale-95 border relative group',
                         getPair(rowLetter, colLetter)!.word.trim().length > 0
-                          ? 'bg-indigo-950/40 hover:bg-indigo-900/50 border-indigo-500/30 text-indigo-200'
+                          ? 'bg-green-950/40 hover:bg-green-900/50 border-green-500/30 text-green-200'
                           : 'bg-dark-900/60 hover:bg-dark-800 border-dark-800 text-slate-500',
                       ]"
                       @click="emit('select', getPair(rowLetter, colLetter)!)"

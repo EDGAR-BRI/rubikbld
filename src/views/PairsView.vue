@@ -144,7 +144,7 @@ function onListScroll(event: Event) {
             :class="[
               'h-full w-7 flex items-center justify-center rounded-md transition-all duration-150',
               viewMode === 'list'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-green-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white',
             ]"
             title="Vista de Lista"
@@ -157,7 +157,7 @@ function onListScroll(event: Event) {
             :class="[
               'h-full w-7 flex items-center justify-center rounded-md transition-all duration-150',
               viewMode === 'matrix'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-green-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white',
             ]"
             title="Vista de Matriz"
@@ -176,15 +176,15 @@ function onListScroll(event: Event) {
           <span class="text-slate-400 font-medium">
             Progreso de tu lista de pares
           </span>
-          <span class="font-mono font-bold text-indigo-400">
+          <span class="font-mono font-bold text-green-400">
             {{ pairsStore.stats.completed }} / {{ pairsStore.stats.total }} ({{ pairsStore.stats.percentage }}%)
           </span>
         </div>
 
         <!-- Barra de progreso animada -->
-        <div class="w-full h-2 bg-dark-800 rounded-full overflow-hidden flex">
+        <div class="w-full h-2 bg-dark-800 rounded-md overflow-hidden flex">
           <div
-            class="bg-indigo-500 h-full transition-all duration-300"
+            class="bg-green-500 h-full transition-all duration-300"
             :style="{ width: `${pairsStore.stats.percentage}%` }"
           />
         </div>
@@ -204,7 +204,7 @@ function onListScroll(event: Event) {
             {{ pairsStore.stats.edgeOnlyCount }} Solo Aristas
           </span>
           <span class="flex items-center gap-1 font-medium ml-auto">
-            <AppIcon name="lucide:image" :size="12" class-name="text-indigo-400" />
+            <AppIcon name="lucide:image" :size="12" class-name="text-green-400" />
             {{ pairsStore.stats.withImage }} con foto
           </span>
         </div>
@@ -238,14 +238,14 @@ function onListScroll(event: Event) {
             v-if="!showFilters"
             type="button"
             title="Abrir filtros"
-            class="h-11 px-3 rounded-xl bg-dark-900 border border-dark-700 hover:border-indigo-500/70 text-slate-300 hover:text-white flex items-center justify-center transition-all duration-150 active:scale-95 shrink-0 relative shadow-sm"
+            class="h-11 px-3 rounded-xl bg-dark-900 border border-dark-700 hover:border-green-500/70 text-slate-300 hover:text-white flex items-center justify-center transition-all duration-150 active:scale-95 shrink-0 relative shadow-sm"
             @click="showFilters = true"
           >
             <AppIcon name="lucide:sliders-horizontal" :size="18" />
             <!-- Indicador dot si hay filtros activos aplicados -->
             <span
               v-if="hasActiveFilters"
-              class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 ring-2 ring-dark-950 rounded-full"
+              class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 ring-2 ring-dark-950 rounded-full"
             />
           </button>
         </Transition>
@@ -321,7 +321,7 @@ function onListScroll(event: Event) {
               :class="[
                 'px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0',
                 pairsStore.selectedLetter === letter
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-green-600 text-white shadow-sm'
                   : 'bg-dark-900 text-slate-400 hover:text-white border border-dark-800',
               ]"
               @click="selectLetter(letter)"
@@ -333,7 +333,7 @@ function onListScroll(event: Event) {
           <!-- Barra inferior del panel: estado de filtros y pestaña "Ocultar filtros ▲" -->
           <div class="flex items-center justify-between pt-1 border-t border-dark-900/80">
             <div class="flex items-center gap-2 text-[11px] text-slate-400">
-              <span v-if="hasActiveFilters" class="text-indigo-400 font-medium">
+              <span v-if="hasActiveFilters" class="text-green-400 font-medium">
                 {{ activeFiltersCount }} filtro{{ activeFiltersCount > 1 ? 's' : '' }} activo{{ activeFiltersCount > 1 ? 's' : '' }}
               </span>
               <button

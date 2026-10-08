@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.9.0] - 2026-10-08
+- 🚀 feat(matrix): anadir pestana srs e historial de repaso en modal de pares
+
 ## [0.8.0] - 2026-10-08
 - 🚀 feat(study): anadir gestos tactiles para calificar flashcards y configuracion
 
