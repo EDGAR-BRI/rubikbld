@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.2.0] - 2026-10-08
+- 🚀 feat: integrar Vercel Web Analytics para conteo de visitantes y vistas de página
+
 ## [0.1.1] - 2026-10-08
 - 🐛 fix: resolver prepare script en entorno CI/Vercel y conservar scripts en .vercelignore
 

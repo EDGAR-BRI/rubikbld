@@ -1,7 +1,7 @@
 {
   "name": "rubikbld",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@iconify/vue": "^5.0.3",
+    "@vercel/analytics": "^2.0.1",
     "@vueuse/core": "^15.0.0",
     "dexie": "^4.4.6",
     "pinia": "^4.0.3",
