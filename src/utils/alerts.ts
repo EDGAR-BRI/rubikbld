@@ -326,7 +326,7 @@ export const showPwaInstallInstructions = (isIOS: boolean) => {
       html: `
         <div style="text-align: left; font-size: 0.875rem; color: #94a3b8; line-height: 1.6;">
           <p style="margin-bottom: 0.75rem;">
-            Para tener Rubik BLD como aplicación nativa en tu pantalla de inicio:
+            Para tener Memo Cube como aplicación nativa en tu pantalla de inicio:
           </p>
           <div style="background: #111726; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 0.85rem; font-size: 0.85rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.6rem;">
             <div>1. Toca el botón <b>Compartir</b> <span style="font-size: 1.1em; color: #818cf8;">⎋</span> en Safari.</div>
@@ -348,7 +348,7 @@ export const showPwaInstallInstructions = (isIOS: boolean) => {
   return Swal.fire({
     ...swalDark,
     icon: 'info',
-    title: 'Instalar Rubik BLD',
+    title: 'Instalar Memo Cube',
     html: `
       <div style="text-align: left; font-size: 0.875rem; color: #94a3b8; line-height: 1.6;">
         <p style="margin-bottom: 0.75rem;">

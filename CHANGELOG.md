@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.2.2] - 2026-10-08
+- • style(branding): actualizar identidad visual y nombre a Memo Cube
+
 ## [0.2.1] - 2026-10-08
 - 🧹 chore(config): configurar exclusion de entornos y plantilla .env.example
 

@@ -1,4 +1,4 @@
-# Rubik BLD Flashcards (PWA) 🧩
+# Memo Cube (PWA) 🧩
 
 Aplicación de entrenamiento y práctica de pares de letras para **Blindfolded (BLD)** con **Repetición Espaciada (SRS estilo AnkiDroid)**, diseñada como una **PWA móvil primero** (100% offline-first).
 

@@ -271,7 +271,7 @@ const scaleRatio = computed(() => props.size / 84)
       <div class="logo-pulse-ring"></div>
       <img
         src="/cubo_transparente.png"
-        alt="Rubik BLD"
+        alt="Memo Cube"
         class="logo-img"
         :style="{ width: size + 'px', height: size + 'px' }"
       />
