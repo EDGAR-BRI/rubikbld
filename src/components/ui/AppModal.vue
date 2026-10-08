@@ -23,8 +23,8 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const isRendered = ref(false)
-const isOpen = ref(false)
+// Mantiene el contenedor teleportado en el DOM mientras la animación de salida termina
+const isMounted = ref(false)
 
 // Drag-to-dismiss gesture para móvil (estilo native bottom sheet)
 const dragTranslateY = ref(0)
@@ -34,7 +34,6 @@ let touchLastY = 0
 let touchStartTime = 0
 
 function close() {
-  isOpen.value = false
   emit('update:modelValue', false)
   emit('close')
 }
@@ -49,25 +48,18 @@ watch(
   () => props.modelValue,
   (val) => {
     if (val) {
-      isRendered.value = true
+      isMounted.value = true
       document.body.style.overflow = 'hidden'
-      // Doble RAF para garantizar montaje en DOM antes de iniciar la transición fluida
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          isOpen.value = true
-        })
-      })
     } else {
-      isOpen.value = false
       document.body.style.overflow = ''
     }
   },
   { immediate: true },
 )
 
-function onSheetAfterLeave() {
+function onAfterLeave() {
   if (!props.modelValue) {
-    isRendered.value = false
+    isMounted.value = false
     dragTranslateY.value = 0
     isDragging.value = false
   }
@@ -136,7 +128,7 @@ const sheetStyle = computed(() => {
       transform: `translate3d(0, ${Math.max(0, dragTranslateY.value)}px, 0)`,
       transition: isDragging.value
         ? 'none'
-        : 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
+        : 'transform 0.36s cubic-bezier(0.16, 1, 0.3, 1)',
     }
   }
   return undefined
@@ -146,38 +138,23 @@ const sheetStyle = computed(() => {
 <template>
   <Teleport to="body">
     <div
-      v-if="isRendered"
+      v-if="isMounted"
       class="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 overflow-hidden pointer-events-none"
     >
       <!-- Backdrop oscuro con blur independiente -->
-      <Transition
-        enter-active-class="transition-opacity duration-300 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition-opacity duration-250 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
+      <Transition name="backdrop" appear>
         <div
-          v-if="isOpen"
+          v-if="modelValue"
           class="fixed inset-0 bg-black/75 backdrop-blur-sm pointer-events-auto"
           aria-hidden="true"
           @click="close"
         />
       </Transition>
 
-      <!-- Modal Card / Native Bottom Sheet móvil -->
-      <Transition
-        enter-active-class="transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]"
-        enter-from-class="translate-y-full sm:translate-y-6 sm:opacity-0 sm:scale-95"
-        enter-to-class="translate-y-0 sm:translate-y-0 sm:opacity-100 sm:scale-100"
-        leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
-        leave-from-class="translate-y-0 sm:translate-y-0 sm:opacity-100 sm:scale-100"
-        leave-to-class="translate-y-full sm:translate-y-6 sm:opacity-0 sm:scale-95"
-        @after-leave="onSheetAfterLeave"
-      >
+      <!-- Modal Card / Native Bottom Sheet móvil (sube desde 100vh completo) -->
+      <Transition name="bottom-sheet" appear @after-leave="onAfterLeave">
         <div
-          v-if="isOpen"
+          v-if="modelValue"
           :class="[
             'relative w-full bg-dark-900 border-t sm:border border-dark-700/80 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh] pointer-events-auto will-change-transform',
             maxWidthClasses[maxWidth],

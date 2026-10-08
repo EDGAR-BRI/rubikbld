@@ -3,6 +3,10 @@ import path from "node:path";
 
 const hooksDir = path.resolve(".git/hooks");
 
+if (process.env.CI || process.env.VERCEL || !fs.existsSync(hooksDir)) {
+  process.exit(0);
+}
+
 const nodeEnvLoader = `# Cargar PATH común de Node (nvm, fnm, brew, volta, asdf) por si el entorno GUI no lo tiene
 if ! command -v node >/dev/null 2>&1; then
   export NVM_DIR="$HOME/.nvm"

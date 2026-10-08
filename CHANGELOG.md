@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.1.1] - 2026-10-08
+- 🐛 fix: resolver prepare script en entorno CI/Vercel y conservar scripts en .vercelignore
+
 ## [0.1.0] - 2026-10-08
 - 🚀 feat: configurar despliegue optimizado para Vercel con rewrites SPA y headers PWA
 

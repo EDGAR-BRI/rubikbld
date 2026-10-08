@@ -1,7 +1,7 @@
 {
   "name": "rubikbld",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "prepare": "node scripts/setup-git-hooks.mjs"
+    "prepare": "node -e \"try { if (!process.env.CI && !process.env.VERCEL && require('node:fs').existsSync('.git')) require('node:child_process').execSync('node scripts/setup-git-hooks.mjs', { stdio: 'inherit' }); } catch {}\""
   },
   "dependencies": {
     "@iconify/vue": "^5.0.3",
