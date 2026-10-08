@@ -1,0 +1,10 @@
+# Archivos pesados de soporte o datos innecesarios en el build de producción
+Notas seleccionadas-20261008000433.apkg
+rubikbld_anki_backup.json
+cubo.png
+cubo_transparente.png
+original.jpeg
+
+# Herramientas de desarrollo y agentes
+.agents/
+scripts/
