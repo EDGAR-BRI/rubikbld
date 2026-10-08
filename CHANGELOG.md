@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.3.0] - 2026-10-08
+- 🚀 feat(legal): añadir paginas de privacidad y terminos para google oauth
+
 ## [0.2.2] - 2026-10-08
 - • style(branding): actualizar identidad visual y nombre a Memo Cube
 

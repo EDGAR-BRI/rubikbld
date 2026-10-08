@@ -25,6 +25,16 @@ const routes = [
     name: 'settings',
     component: SettingsView,
   },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: () => import('@/views/PrivacyView.vue'),
+  },
+  {
+    path: '/terms',
+    name: 'terms',
+    component: () => import('@/views/TermsView.vue'),
+  },
 ]
 
 export const router = createRouter({

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidad - Memo Cube</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #020617;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin: 0;
+      padding: 24px 16px;
+    }
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .card {
+      background-color: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #ffffff;
+      font-size: 24px;
+      margin: 0 0 8px 0;
+    }
+    h2 {
+      color: #ffffff;
+      font-size: 18px;
+      margin-top: 0;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 8px;
+    }
+    p {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+    }
+    ul {
+      margin: 0 0 12px 0;
+      padding-left: 20px;
+      font-size: 14px;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      margin-right: 8px;
+    }
+    .code-box {
+      background-color: #020617;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #a5b4fc;
+      word-break: break-all;
+      margin: 8px 0;
+    }
+    a {
+      color: #818cf8;
+      text-decoration: underline;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #334155;
+      color: #ffffff;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Política de Privacidad</h1>
+      <p style="color: #94a3b8; font-size: 13px; margin-bottom: 16px;">Aplicación: <strong>Memo Cube</strong></p>
+      <div>
+        <span class="badge">100% Offline-First</span>
+        <span class="badge" style="background-color: #1e293b; color: #94a3b8; border-color: #334155;">Actualizado: Octubre 2026</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>1. Introducción y Arquitectura Serverless</h2>
+      <p>
+        Esta Política de Privacidad describe cómo <strong>Memo Cube</strong> recopila, utiliza y protege tus datos personales. La aplicación está diseñada bajo el principio de <strong>privacidad por diseño</strong>: funciona íntegramente como una PWA en tu navegador sin servidores intermedios de almacenamiento ni bases de datos en la nube gestionadas por terceros.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>2. Datos Almacenados Localmente</h2>
+      <p>Todos los datos se almacenan exclusivamente en el almacenamiento local de tu dispositivo mediante <strong>IndexedDB</strong>:</p>
+      <ul>
+        <li>Pares de letras, palabras e historias mnemotécnicas asociadas.</li>
+        <li>Imágenes de apoyo comprimidas en formato WebP.</li>
+        <li>Progreso del algoritmo de repetición espaciada (SM-2 / SRS) y registros de repaso.</li>
+        <li>Configuración personalizada del esquema de letras del cubo (Speffz o adaptaciones).</li>
+      </ul>
+      <p>No recopilamos ni transmitimos esta información a ningún servidor nuestro.</p>
+    </div>
+
+    <div class="card">
+      <h2>3. Uso de la API de Google Drive</h2>
+      <p>memo cube bld ofrece una función opcional para respaldar y sincronizar tus datos en tu propia cuenta de Google Drive.</p>
+      <p><strong>Permiso OAuth solicitado:</strong></p>
+      <div class="code-box">https://www.googleapis.com/auth/drive.file</div>
+      <p>
+        Este permiso es restringido y solo permite a la aplicación crear, leer y actualizar los archivos que hayan sido generados por la propia aplicación. <strong>memo cube bld nunca tiene acceso, lectura ni modificación sobre ningún otro documento, archivo o carpeta de tu Google Drive.</strong>
+      </p>
+      <p><strong>Uso del archivo de respaldo:</strong></p>
+      <ul>
+        <li>Crea o actualiza un único archivo denominado <code>rubikbld_backup.json</code> en tu cuenta de Drive.</li>
+        <li>Descarga dicho archivo para restaurar tu información cuando lo solicites explícitamente.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>4. Cumplimiento de la Política de Datos de Google (Limited Use)</h2>
+      <p>
+        El uso que <strong>memo cube bld</strong> hace de la información recibida a través de las APIs de Google se adhiere estrictamente a la 
+        <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">
+          Política de Datos de Usuario de los Servicios de API de Google
+        </a>, incluidos los requisitos de Uso Limitado (Limited Use):
+      </p>
+      <ul>
+        <li>No compartimos, transferimos ni vendemos datos de usuario de Google a terceros.</li>
+        <li>No utilizamos datos de Google para publicidad ni perfilado comercial.</li>
+        <li>No utilizamos datos de Google para entrenar modelos de Inteligencia Artificial o Machine Learning.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>5. Control del Usuario y Revocación</h2>
+      <p>Puedes revocar el acceso de la aplicación en cualquier momento desde:</p>
+      <ul>
+        <li>El botón "Desconectar" en la pantalla de Ajustes de la aplicación.</li>
+        <li>El panel de permisos de Google en <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">myaccount.google.com/permissions</a>.</li>
+      </ul>
+      <p>Para borrar el respaldo, puedes eliminar manualmente el archivo <code>rubikbld_backup.json</code> desde Google Drive.</p>
+    </div>
+
+    <div class="card">
+      <h2>6. Contacto y Código Abierto</h2>
+      <p>memo cube bld es un proyecto de código abierto con licencia MIT. Puedes revisar el código fuente o comunicarte a través de:</p>
+      <p><a href="https://github.com/EDGAR-BRI/rubikbld" target="_blank" rel="noopener noreferrer">https://github.com/EDGAR-BRI/rubikbld</a></p>
+      <a href="/" class="btn">Volver a la Aplicación</a>
+    </div>
+  </div>
+</body>
+</html>
