@@ -116,7 +116,7 @@ async function removeImage() {
     <!-- Botones de subida si no hay imagen -->
     <div v-else class="flex flex-col gap-2">
       <div
-        class="border-2 border-dashed border-dark-700 hover:border-indigo-500/50 bg-dark-900/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-colors"
+        class="border-2 border-dashed border-dark-700 hover:border-green-500/50 bg-dark-900/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-colors"
         @click="fileInputRef?.click()"
       >
         <AppIcon
@@ -129,7 +129,7 @@ async function removeImage() {
           v-else
           name="lucide:loader-2"
           :size="32"
-          class-name="text-indigo-400 animate-spin mb-2"
+          class-name="text-green-400 animate-spin mb-2"
         />
 
         <p class="text-xs font-medium text-slate-300">
@@ -166,7 +166,7 @@ async function removeImage() {
           v-model="manualUrl"
           type="url"
           placeholder="https://ejemplo.com/foto.jpg"
-          class="flex-1 bg-dark-900 border border-dark-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+          class="flex-1 bg-dark-900 border border-dark-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-green-500"
           @keydown.enter.prevent="applyManualUrl"
         />
         <AppButton size="sm" variant="primary" @click="applyManualUrl">

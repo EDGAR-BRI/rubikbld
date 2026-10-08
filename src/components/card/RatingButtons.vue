@@ -49,6 +49,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       <span class="text-xs text-rose-400/90 font-mono font-semibold mt-0.5">
         {{ intervals[1] }}
       </span>
+      <span class="text-[10px] text-rose-500/70 mt-0.5 font-mono flex items-center gap-0.5 sm:hidden">←</span>
       <span class="hidden sm:inline-block text-[10px] text-rose-500/60 mt-1 font-mono">[1]</span>
     </button>
 
@@ -63,6 +64,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       <span class="text-xs text-amber-400/90 font-mono font-semibold mt-0.5">
         {{ intervals[2] }}
       </span>
+      <span class="text-[10px] text-amber-500/70 mt-0.5 font-mono flex items-center gap-0.5 sm:hidden">↓</span>
       <span class="hidden sm:inline-block text-[10px] text-amber-500/60 mt-1 font-mono">[2]</span>
     </button>
 
@@ -77,6 +79,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       <span class="text-xs text-emerald-400/90 font-mono font-semibold mt-0.5">
         {{ intervals[3] }}
       </span>
+      <span class="text-[10px] text-emerald-500/70 mt-0.5 font-mono flex items-center gap-0.5 sm:hidden">→</span>
       <span class="hidden sm:inline-block text-[10px] text-emerald-500/60 mt-1 font-mono">[3]</span>
     </button>
 
@@ -84,14 +87,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
     <button
       type="button"
       :disabled="disabled"
-      class="group relative flex flex-col items-center justify-center py-3 px-1.5 rounded-2xl bg-indigo-950/40 hover:bg-indigo-900/50 active:bg-indigo-900 border border-indigo-800/40 text-indigo-300 transition-all active:scale-95 disabled:opacity-40"
+      class="group relative flex flex-col items-center justify-center py-3 px-1.5 rounded-2xl bg-sky-950/40 hover:bg-sky-900/50 active:bg-sky-900 border border-sky-800/40 text-sky-300 transition-all active:scale-95 disabled:opacity-40"
       @click="onRate(4)"
     >
       <span class="text-[11px] font-bold tracking-tight uppercase">Fácil</span>
-      <span class="text-xs text-indigo-400/90 font-mono font-semibold mt-0.5">
+      <span class="text-xs text-sky-400/90 font-mono font-semibold mt-0.5">
         {{ intervals[4] }}
       </span>
-      <span class="hidden sm:inline-block text-[10px] text-indigo-500/60 mt-1 font-mono">[4]</span>
+      <span class="text-[10px] text-sky-500/70 mt-0.5 font-mono flex items-center gap-0.5 sm:hidden">↑</span>
+      <span class="hidden sm:inline-block text-[10px] text-sky-500/60 mt-1 font-mono">[4]</span>
     </button>
   </div>
 </template>

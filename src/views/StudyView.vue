@@ -8,6 +8,7 @@ import AppButton from '@/components/ui/AppButton.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import FlashCard from '@/components/card/FlashCard.vue'
 import RatingButtons from '@/components/card/RatingButtons.vue'
+import CardGestureHelpModal from '@/components/card/CardGestureHelpModal.vue'
 import PairEditModal from '@/components/matrix/PairEditModal.vue'
 import RubikLoader from '@/components/RubikLoader.vue'
 import { showSuccessToast } from '@/utils/alerts'
@@ -17,6 +18,7 @@ const settingsStore = useSettingsStore()
 
 const editingPair = ref<PairItem | null>(null)
 const showEditModal = ref(false)
+const showGestureHelp = ref(false)
 
 const hasCards = computed(() => !!reviewStore.currentCard && !!reviewStore.currentPair)
 
@@ -59,6 +61,10 @@ function onPairSaved() {
   // Recargar la tarjeta actual si fue editada
 }
 
+async function onCardUpdated() {
+  await reviewStore.loadReviewSession()
+}
+
 async function addMoreNewCards() {
   settingsStore.srsSettings.newCardsPerDay += 10
   await reviewStore.loadReviewSession()
@@ -87,14 +93,14 @@ async function onRefreshSession() {
     </AppHeader>
 
     <!-- Filtro de tipo de pieza para la sesión -->
-    <div class="px-4 py-2 border-b border-dark-900 flex items-center justify-between gap-2 shrink-0">
-      <div class="flex items-center gap-1 bg-dark-900 p-1 rounded-xl border border-dark-800 text-xs">
+    <div class="px-3 sm:px-4 py-2 border-b border-dark-900 flex items-center justify-between gap-2 shrink-0">
+      <div class="flex items-center gap-0.5 sm:gap-1 bg-dark-900 p-1 rounded-xl border border-dark-800 text-xs shrink-0">
         <button
           type="button"
           :class="[
-            'px-2.5 py-1 rounded-lg font-medium transition-colors',
+            'px-2 sm:px-2.5 py-1 rounded-lg font-medium transition-colors text-xs',
             reviewStore.filterType === 'all'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-green-600 text-white'
               : 'text-slate-400 hover:text-slate-200',
           ]"
           @click="reviewStore.filterType = 'all'; reviewStore.loadReviewSession()"
@@ -104,9 +110,9 @@ async function onRefreshSession() {
         <button
           type="button"
           :class="[
-            'px-2.5 py-1 rounded-lg font-medium transition-colors',
+            'px-2 sm:px-2.5 py-1 rounded-lg font-medium transition-colors text-xs',
             reviewStore.filterType === 'corner'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-green-600 text-white'
               : 'text-slate-400 hover:text-slate-200',
           ]"
           @click="reviewStore.filterType = 'corner'; reviewStore.loadReviewSession()"
@@ -116,9 +122,9 @@ async function onRefreshSession() {
         <button
           type="button"
           :class="[
-            'px-2.5 py-1 rounded-lg font-medium transition-colors',
+            'px-2 sm:px-2.5 py-1 rounded-lg font-medium transition-colors text-xs',
             reviewStore.filterType === 'edge'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-green-600 text-white'
               : 'text-slate-400 hover:text-slate-200',
           ]"
           @click="reviewStore.filterType = 'edge'; reviewStore.loadReviewSession()"
@@ -127,14 +133,29 @@ async function onRefreshSession() {
         </button>
       </div>
 
-      <button
-        type="button"
-        class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium"
-        @click="onRefreshSession"
-      >
-        <AppIcon name="lucide:rotate-cw" :size="14" />
-        <span>Recargar</span>
-      </button>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          class="text-xs text-sky-400 hover:text-sky-300 flex items-center justify-center gap-1 font-medium p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20 active:scale-95 transition-all"
+          title="Ver gestos táctiles"
+          aria-label="Ver gestos táctiles"
+          @click="showGestureHelp = true"
+        >
+          <AppIcon name="lucide:hand" :size="15" />
+          <span class="hidden sm:inline">Gestos</span>
+        </button>
+
+        <button
+          type="button"
+          class="text-xs text-green-400 hover:text-green-300 flex items-center justify-center gap-1 font-medium p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 active:scale-95 transition-all"
+          title="Recargar sesión"
+          aria-label="Recargar sesión"
+          @click="onRefreshSession"
+        >
+          <AppIcon name="lucide:rotate-cw" :size="15" />
+          <span class="hidden sm:inline">Recargar</span>
+        </button>
+      </div>
     </div>
 
     <!-- Contenido Principal -->
@@ -152,8 +173,13 @@ async function onRefreshSession() {
             :card="reviewStore.currentCard!"
             :is-flipped="reviewStore.isFlipped"
             :reverse-mode="settingsStore.reversePractice"
+            :enable-gestures="settingsStore.enableCardGestures"
+            :allow-swipe-before-flip="settingsStore.allowSwipeBeforeFlip"
+            :sensitivity="settingsStore.gestureSensitivity"
+            :intervals="reviewStore.buttonIntervals"
             @flip="reviewStore.flip"
             @edit="onOpenEdit"
+            @rate="reviewStore.rate"
           />
         </div>
 
@@ -164,7 +190,7 @@ async function onRefreshSession() {
             <AppButton
               variant="primary"
               size="lg"
-              class="w-full font-bold shadow-indigo-600/30"
+              class="w-full font-bold shadow-green-600/30"
               icon="lucide:eye"
               @click="reviewStore.flip"
             >
@@ -262,6 +288,12 @@ async function onRefreshSession() {
       v-model="showEditModal"
       :pair-item="editingPair"
       @saved="onPairSaved"
+      @card-updated="onCardUpdated"
+    />
+
+    <!-- Modal informativo de gestos de deslizamiento -->
+    <CardGestureHelpModal
+      v-model="showGestureHelp"
     />
   </div>
 </template>

@@ -8,6 +8,7 @@ import AppInput from '@/components/ui/AppInput.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import AppSwitch from '@/components/ui/AppSwitch.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
+import CardGestureHelpModal from '@/components/card/CardGestureHelpModal.vue'
 import {
   showSuccessToast,
   showErrorToast,
@@ -20,6 +21,8 @@ import { APP_VERSION } from '@/config/version'
 
 const settingsStore = useSettingsStore()
 const { isInstalled, isIOS, promptInstall } = usePwaInstall()
+
+const showGestureModal = ref(false)
 
 const GITHUB_REPO_URL = 'https://github.com/EDGAR-BRI/rubikbld'
 const GITHUB_ISSUES_URL = 'https://github.com/EDGAR-BRI/rubikbld/issues'
@@ -113,28 +116,29 @@ async function onJsonFileSelected(e: Event) {
   }
 }
 
-async function handleSyncWithDrive() {
-  await settingsStore.syncWithDrive()
+async function handleExportToDrive() {
+  await settingsStore.exportToDrive()
   if (settingsStore.syncStatus.error) {
-    showErrorToast('Error en Drive', settingsStore.syncStatus.error)
+    showErrorToast('Error al exportar a Drive', settingsStore.syncStatus.error)
   } else {
-    showSuccessToast('Sincronizado con éxito', 'Datos respaldados en tu Google Drive')
+    showSuccessToast('Exportado con éxito', 'Datos guardados en tu Google Drive')
   }
 }
 
-async function handleRestoreFromDrive() {
+async function handleImportFromDrive() {
   const confirmRes = await showConfirm(
-    '¿Restaurar desde Google Drive?',
-    'Se descargarán tus datos desde tu Drive reemplazando los locales.',
-    'Sí, descargar',
+    '¿Importar desde Google Drive?',
+    'Se descargarán tus datos desde tu Google Drive reemplazando los locales en este dispositivo.',
+    'Sí, importar',
   )
   if (!confirmRes.isConfirmed) return
 
-  await settingsStore.restoreFromDrive()
+  await settingsStore.importFromDrive()
   if (settingsStore.syncStatus.error) {
-    showErrorToast('Error al restaurar', settingsStore.syncStatus.error)
+    showErrorToast('Error al importar de Drive', settingsStore.syncStatus.error)
   } else {
-    showSuccessToast('¡Restaurado con éxito!', 'Datos sincronizados desde tu Drive')
+    showSuccessToast('¡Datos importados!', 'Recargando aplicación...')
+    setTimeout(() => window.location.reload(), 1200)
   }
 }
 
@@ -172,7 +176,7 @@ function openGithubUrl(url: string) {
           <!-- SECCIÓN 1: Google Drive Sync -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-5 shadow-xl">
         <div class="flex items-center gap-3 mb-4">
-          <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+          <div class="w-10 h-10 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
             <AppIcon name="lucide:cloud" :size="20" />
           </div>
           <div>
@@ -206,16 +210,16 @@ function openGithubUrl(url: string) {
           <!-- Enlaces de consentimiento OAuth -->
           <p class="text-[11px] text-center text-slate-500 leading-normal px-2">
             Al conectar, aceptas nuestra
-            <router-link to="/privacy" class="text-indigo-400 hover:underline">Política de Privacidad</router-link>
+            <router-link to="/privacy" class="text-green-400 hover:underline">Política de Privacidad</router-link>
             y
-            <router-link to="/terms" class="text-indigo-400 hover:underline">Condiciones del Servicio</router-link>.
+            <router-link to="/terms" class="text-green-400 hover:underline">Condiciones del Servicio</router-link>.
           </p>
 
           <!-- Toggle para configuración manual avanzada de Client ID -->
           <div class="pt-1">
             <button
               type="button"
-              class="text-[11px] text-slate-500 hover:text-indigo-400 flex items-center gap-1.5 transition-colors mx-auto"
+              class="text-[11px] text-slate-500 hover:text-green-400 flex items-center gap-1.5 transition-colors mx-auto"
               @click="showManualClientId = !showManualClientId"
             >
               <AppIcon :name="showManualClientId ? 'lucide:chevron-up' : 'lucide:settings-2'" :size="12" />
@@ -234,7 +238,7 @@ function openGithubUrl(url: string) {
                 <span>Desde Google Cloud Console</span>
                 <button
                   type="button"
-                  class="text-indigo-400 hover:underline font-medium"
+                  class="text-green-400 hover:underline font-medium"
                   @click="saveGoogleClientId"
                 >
                   Guardar ID
@@ -257,7 +261,7 @@ function openGithubUrl(url: string) {
               />
               <div
                 v-else
-                class="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 font-bold"
+                class="w-10 h-10 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center text-green-400 shrink-0 font-bold"
               >
                 {{ settingsStore.syncStatus.user?.name?.charAt(0) || 'U' }}
               </div>
@@ -267,7 +271,7 @@ function openGithubUrl(url: string) {
                   <p class="text-sm font-bold text-white truncate">
                     {{ settingsStore.syncStatus.user?.name }}
                   </p>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
                     Conectado
                   </span>
                 </div>
@@ -288,16 +292,16 @@ function openGithubUrl(url: string) {
             </button>
           </div>
 
-          <!-- Botones de sincronización -->
-          <div class="flex flex-col gap-2">
+          <!-- Botones de Google Drive (Exportar / Importar) -->
+          <div class="grid grid-cols-2 gap-2">
             <AppButton
               variant="primary"
               size="md"
-              icon="lucide:refresh-cw"
+              icon="lucide:cloud-upload"
               :loading="settingsStore.syncStatus.isSyncing"
-              @click="handleSyncWithDrive"
+              @click="handleExportToDrive"
             >
-              Sincronizar a Google Drive
+              Exportar a Drive
             </AppButton>
 
             <AppButton
@@ -305,17 +309,17 @@ function openGithubUrl(url: string) {
               size="md"
               icon="lucide:cloud-download"
               :disabled="settingsStore.syncStatus.isSyncing"
-              @click="handleRestoreFromDrive"
+              @click="handleImportFromDrive"
             >
-              Restaurar desde Google Drive
+              Importar de Drive
             </AppButton>
           </div>
 
-          <!-- Info última sincronización -->
+          <!-- Info última exportación -->
           <div class="text-xs text-slate-400 flex items-center justify-between px-1">
             <span class="flex items-center gap-1.5">
               <AppIcon name="lucide:clock" :size="13" class-name="text-slate-500" />
-              Última sincronización:
+              Última exportación:
             </span>
             <span class="font-mono text-slate-300">
               {{ formatDate(settingsStore.syncStatus.lastSyncTime) }}
@@ -331,7 +335,7 @@ function openGithubUrl(url: string) {
       <!-- SECCIÓN 2: Opciones de Práctica y SRS -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-5 shadow-xl">
         <div class="flex items-center gap-3 mb-4">
-          <div class="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+          <div class="w-10 h-10 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
             <AppIcon name="lucide:sliders" :size="20" />
           </div>
           <div>
@@ -369,7 +373,7 @@ function openGithubUrl(url: string) {
           <div class="pt-3 border-t border-dark-800">
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-slate-200">Nuevas tarjetas por día</span>
-              <span class="font-mono font-bold text-indigo-400 text-sm">
+              <span class="font-mono font-bold text-green-400 text-sm">
                 {{ settingsStore.srsSettings.newCardsPerDay }}
               </span>
             </div>
@@ -379,9 +383,141 @@ function openGithubUrl(url: string) {
               min="5"
               max="60"
               step="5"
-              class="w-full accent-indigo-500 bg-dark-950 rounded-lg h-2 cursor-pointer"
+              class="w-full accent-green-500 bg-dark-950 rounded-lg h-2 cursor-pointer"
               @change="settingsStore.saveSRSSettings(settingsStore.srsSettings)"
             />
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 2.1: Gestos Móviles de Tarjetas (Swipe SRS) -->
+      <div class="bg-dark-900 border border-dark-800 rounded-3xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+              <AppIcon name="lucide:hand" :size="20" />
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-white">Gestos de Tarjetas</h2>
+              <p class="text-xs text-slate-400">Califica deslizando con 1 solo dedo (el pulgar)</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium bg-sky-500/10 border border-sky-500/20 px-2.5 py-1 rounded-xl transition-colors"
+            @click="showGestureModal = true"
+          >
+            <AppIcon name="lucide:help-circle" :size="13" />
+            <span>Guía</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <!-- Toggle Activar Gestos -->
+          <AppSwitch
+            v-model="settingsStore.enableCardGestures"
+            label="Gestos de deslizamiento"
+            description="Desliza con 1 solo dedo en cualquier dirección con ayuda visual tipo Gmail"
+            @change="(val: boolean) => {
+              settingsStore.setEnableCardGestures(val)
+              showSuccessToast(val ? 'Gestos activados' : 'Gestos desactivados', val ? 'Desliza las tarjetas para calificar' : 'Usa solo los botones para calificar')
+            }"
+          />
+
+          <!-- Toggle Calificar sin voltear -->
+          <div class="pt-3 border-t border-dark-800">
+            <AppSwitch
+              v-model="settingsStore.allowSwipeBeforeFlip"
+              label="Calificar sin voltear"
+              description="Permite deslizar directamente desde el frente para repasos ultra rápidos"
+              @change="(val: boolean) => {
+                settingsStore.setAllowSwipeBeforeFlip(val)
+                showSuccessToast(val ? 'Repaso rápido activado' : 'Volteo obligatorio activado', val ? 'Puedes calificar sin voltear la tarjeta' : 'Debes voltear la tarjeta antes de calificar')
+              }"
+            />
+          </div>
+
+          <!-- Selector de Sensibilidad -->
+          <div class="pt-3 border-t border-dark-800">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-slate-200">Sensibilidad de deslizamiento</span>
+              <span class="text-xs font-mono text-slate-400">
+                {{ settingsStore.gestureSensitivity === 'high' ? 'Sensible (55px)' : settingsStore.gestureSensitivity === 'low' ? 'Firme (95px)' : 'Normal (75px)' }}
+              </span>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                :class="[
+                  'py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center',
+                  settingsStore.gestureSensitivity === 'high'
+                    ? 'bg-sky-600 text-white border-sky-500 shadow-md shadow-sky-600/20'
+                    : 'bg-dark-950 text-slate-400 border-dark-800 hover:text-white',
+                ]"
+                @click="settingsStore.setGestureSensitivity('high')"
+              >
+                Sensible
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center',
+                  settingsStore.gestureSensitivity === 'normal'
+                    ? 'bg-green-600 text-white border-green-500 shadow-md shadow-green-600/20'
+                    : 'bg-dark-950 text-slate-400 border-dark-800 hover:text-white',
+                ]"
+                @click="settingsStore.setGestureSensitivity('normal')"
+              >
+                Normal
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center',
+                  settingsStore.gestureSensitivity === 'low'
+                    ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/20'
+                    : 'bg-dark-950 text-slate-400 border-dark-800 hover:text-white',
+                ]"
+                @click="settingsStore.setGestureSensitivity('low')"
+              >
+                Firme
+              </button>
+            </div>
+          </div>
+
+          <!-- Cheat sheet de direcciones -->
+          <div class="pt-3 border-t border-dark-800 grid grid-cols-2 gap-2 text-xs">
+            <div class="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40 flex items-center gap-2">
+              <span class="font-bold text-emerald-400 text-sm">→</span>
+              <div>
+                <p class="font-bold text-emerald-300">Derecha</p>
+                <p class="text-[10px] text-slate-400">Bien</p>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-rose-950/30 border border-rose-800/40 flex items-center gap-2">
+              <span class="font-bold text-rose-400 text-sm">←</span>
+              <div>
+                <p class="font-bold text-rose-300">Izquierda</p>
+                <p class="text-[10px] text-slate-400">Otra vez</p>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-sky-950/30 border border-sky-800/40 flex items-center gap-2">
+              <span class="font-bold text-sky-400 text-sm">↑</span>
+              <div>
+                <p class="font-bold text-sky-300">Arriba</p>
+                <p class="text-[10px] text-slate-400">Fácil</p>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-amber-950/30 border border-amber-800/40 flex items-center gap-2">
+              <span class="font-bold text-amber-400 text-sm">↓</span>
+              <div>
+                <p class="font-bold text-amber-300">Abajo</p>
+                <p class="text-[10px] text-slate-400">Difícil</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -421,7 +557,7 @@ function openGithubUrl(url: string) {
           </AppButton>
         </div>
 
-        <p v-if="jsonStatusMsg" class="text-xs text-indigo-400 mt-3 text-center">
+        <p v-if="jsonStatusMsg" class="text-xs text-green-400 mt-3 text-center">
           {{ jsonStatusMsg }}
         </p>
 
@@ -480,7 +616,7 @@ function openGithubUrl(url: string) {
             variant="primary"
             size="md"
             icon="lucide:download"
-            class="w-full justify-center bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 shadow-indigo-600/30"
+            class="w-full justify-center bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 shadow-green-600/30"
             @click="handleInstallPwa"
           >
             Instalar en este dispositivo
@@ -524,7 +660,7 @@ function openGithubUrl(url: string) {
         <!-- Versión de la Aplicación (package.json) -->
         <div class="flex items-center justify-between p-3.5 bg-dark-950/80 rounded-2xl border border-dark-800 mb-4">
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div class="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
               <AppIcon name="lucide:tag" :size="16" />
             </div>
             <div>
@@ -532,7 +668,7 @@ function openGithubUrl(url: string) {
               <p class="text-[11px] text-slate-400">package.json</p>
             </div>
           </div>
-          <span class="font-mono text-xs font-bold px-3 py-1 rounded-xl bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-xs">
+          <span class="font-mono text-xs font-bold px-3 py-1 rounded-xl bg-green-500/15 text-green-300 border border-green-500/30 shadow-xs">
             v{{ APP_VERSION }}
           </span>
         </div>
@@ -578,7 +714,7 @@ function openGithubUrl(url: string) {
           </div>
           <button
             type="button"
-            class="flex items-center gap-1 text-indigo-400 hover:underline"
+            class="flex items-center gap-1 text-green-400 hover:underline"
             @click="openGithubUrl(GITHUB_REPO_URL)"
           >
             <span>github.com/EDGAR-BRI/rubikbld</span>
@@ -595,5 +731,8 @@ function openGithubUrl(url: string) {
         <p class="text-[11px] text-slate-600">Entrenamiento 3BLD Offline-First con Repetición Espaciada</p>
       </div>
     </div>
+
+    <!-- Modal de ayuda interactiva para los gestos táctiles -->
+    <CardGestureHelpModal v-model="showGestureModal" />
   </div>
 </template>

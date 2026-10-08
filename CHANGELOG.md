@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.8.0] - 2026-10-08
+- 🚀 feat(study): anadir gestos tactiles para calificar flashcards y configuracion
+
 ## [0.7.0] - 2026-10-08
 - 🚀 feat(scheme): alinear cara azul en 2d con 3d y validar letras duplicadas
 

@@ -16,6 +16,11 @@ export const useSettingsStore = defineStore('settings', () => {
   const reversePractice = ref(false) // Ver imagen/palabra primero y adivinar el par
   const googleClientId = ref<string>(defaultClientId)
   
+  // Gestos táctiles de deslizamiento en tarjetas
+  const enableCardGestures = ref(true)
+  const allowSwipeBeforeFlip = ref(true)
+  const gestureSensitivity = ref<'normal' | 'high' | 'low'>('normal')
+  
   const syncStatus = ref<DriveSyncStatus>({
     isSignedIn: false,
     isSyncing: false,
@@ -47,6 +52,21 @@ export const useSettingsStore = defineStore('settings', () => {
       reversePractice.value = rev.value
     }
 
+    const gestures = await db.settings.get('enable_card_gestures')
+    if (gestures !== undefined) {
+      enableCardGestures.value = gestures.value
+    }
+
+    const swipeBefore = await db.settings.get('allow_swipe_before_flip')
+    if (swipeBefore !== undefined) {
+      allowSwipeBeforeFlip.value = swipeBefore.value
+    }
+
+    const sensitivity = await db.settings.get('gesture_sensitivity')
+    if (sensitivity?.value) {
+      gestureSensitivity.value = sensitivity.value
+    }
+
     const lastSync = await db.settings.get('last_drive_sync')
     if (lastSync?.value) {
       syncStatus.value.lastSyncTime = lastSync.value
@@ -66,6 +86,21 @@ export const useSettingsStore = defineStore('settings', () => {
   async function setReversePractice(val: boolean) {
     reversePractice.value = val
     await db.settings.put({ key: 'reverse_practice', value: val })
+  }
+
+  async function setEnableCardGestures(val: boolean) {
+    enableCardGestures.value = val
+    await db.settings.put({ key: 'enable_card_gestures', value: val })
+  }
+
+  async function setAllowSwipeBeforeFlip(val: boolean) {
+    allowSwipeBeforeFlip.value = val
+    await db.settings.put({ key: 'allow_swipe_before_flip', value: val })
+  }
+
+  async function setGestureSensitivity(val: 'normal' | 'high' | 'low') {
+    gestureSensitivity.value = val
+    await db.settings.put({ key: 'gesture_sensitivity', value: val })
   }
 
   async function saveGoogleClientId(clientId: string) {
@@ -149,20 +184,36 @@ export const useSettingsStore = defineStore('settings', () => {
     syncStatus.value.error = null
   }
 
+  async function exportToDrive() {
+    return syncWithDrive()
+  }
+
+  async function importFromDrive() {
+    return restoreFromDrive()
+  }
+
   return {
     srsSettings,
     practiceOnlyCompleted,
     reversePractice,
     googleClientId,
+    enableCardGestures,
+    allowSwipeBeforeFlip,
+    gestureSensitivity,
     syncStatus,
     loadSettings,
     saveSRSSettings,
     setPracticeOnlyCompleted,
     setReversePractice,
+    setEnableCardGestures,
+    setAllowSwipeBeforeFlip,
+    setGestureSensitivity,
     saveGoogleClientId,
     signInWithGoogle,
     signOutFromGoogle,
     syncWithDrive,
     restoreFromDrive,
+    exportToDrive,
+    importFromDrive,
   }
 })
