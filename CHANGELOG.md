@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.10.0] - 2026-10-08
+- 🚀 feat(db): preservar pares personalizados en sincronizacion y mejorar respaldo anki
+
 ## [0.9.0] - 2026-10-08
 - 🚀 feat(matrix): anadir pestana srs e historial de repaso en modal de pares
 

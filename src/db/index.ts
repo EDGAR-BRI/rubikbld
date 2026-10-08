@@ -69,17 +69,21 @@ export class RubikBldDatabase extends Dexie {
    * Sincroniza y crea los pares unificados con etiquetas (Ambas, Esquinas, Aristas)
    */
   async syncPairsWithScheme(scheme: LetterSchemeConfig): Promise<void> {
+    const rawScheme = JSON.parse(JSON.stringify(scheme))
     const existingPairsList = await this.pairs.toArray()
     const existingMap = new Map(existingPairsList.map(p => [p.id, p]))
 
-    const unifiedGenerated = generateUnifiedPairs(scheme)
+    const unifiedGenerated = generateUnifiedPairs(rawScheme)
     const allMerged = mergeWithExistingPairs(unifiedGenerated, existingMap)
 
     await this.pairs.bulkPut(allMerged)
 
-    // Eliminar pares y tarjetas obsoletos (o duplicados antiguos con prefijo corner: / edge:)
+    // Eliminar pares obsoletos solo si no tienen contenido mnemotécnico personalizado (palabra, imagen o notas)
+    // o si son identificadores antiguos con prefijo legacy ('corner:' o 'edge:')
     const validIds = new Set(allMerged.map(p => p.id))
-    const obsoletePairIds = existingPairsList.filter(p => !validIds.has(p.id)).map(p => p.id)
+    const obsoletePairIds = existingPairsList
+      .filter(p => !validIds.has(p.id) && !p.word && !p.image && !p.notes)
+      .map(p => p.id)
     if (obsoletePairIds.length > 0) {
       await this.pairs.bulkDelete(obsoletePairIds)
     }
@@ -88,7 +92,9 @@ export class RubikBldDatabase extends Dexie {
     const existingCardsList = await this.cards.toArray()
     const existingCardMap = new Map(existingCardsList.map(c => [c.id, c]))
 
-    const obsoleteCardIds = existingCardsList.filter(c => !validIds.has(c.id)).map(c => c.id)
+    const obsoleteCardIds = existingCardsList
+      .filter(c => obsoletePairIds.includes(c.id))
+      .map(c => c.id)
     if (obsoleteCardIds.length > 0) {
       await this.cards.bulkDelete(obsoleteCardIds)
     }
@@ -97,10 +103,16 @@ export class RubikBldDatabase extends Dexie {
     const now = Date.now()
 
     for (const pair of allMerged) {
-      const prevCard = existingCardMap.get(pair.id)
+      const prevCard =
+        existingCardMap.get(pair.id) ||
+        existingCardMap.get(`corner:${pair.id}`) ||
+        existingCardMap.get(`edge:${pair.id}`)
+
       if (prevCard) {
         cardsToSave.push({
           ...prevCard,
+          id: pair.id,
+          pair: pair.pair,
           usage: pair.usage,
         })
       } else {

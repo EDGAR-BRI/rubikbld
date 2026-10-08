@@ -236,17 +236,53 @@ def main():
                 if (idx + 1) % 50 == 0 or (idx + 1) == len(rows):
                     print(f"  [{idx + 1}/{len(rows)}] pares procesados...")
 
+            user_scheme = {
+                "id": "speffz-3x3",
+                "name": "Speffz Estándar 3x3",
+                "gridSize": 3,
+                "stickers": {
+                    "U0": "B", "U2": "A", "U8": "", "U6": "C", "U1": "A", "U5": "K", "U7": "", "U3": "C",
+                    "L0": "L", "L2": "D", "L8": "E", "L6": "F", "L1": "D", "L5": "E", "L7": "F", "L3": "G",
+                    "F0": "G", "F2": "", "F8": "K", "F6": "L", "F1": "", "F5": "J", "F7": "", "F3": "L",
+                    "R0": "", "R2": "N", "R8": "O", "R6": "P", "R1": "M", "R5": "N", "R7": "O", "R3": "P",
+                    "B0": "Q", "B2": "R", "B8": "S", "B6": "T", "B1": "Q", "B5": "R", "B7": "S", "B3": "T",
+                    "D0": "U", "D2": "V", "D8": "W", "D6": "X", "D1": "U", "D5": "V", "D7": "", "D3": "X"
+                },
+                "buffers": {
+                    "corner": "U8",
+                    "edge": "D7"
+                }
+            }
+
+            user_settings = [
+                { "key": "active_scheme_id", "value": "speffz-3x3" },
+                {
+                    "key": "srs_settings",
+                    "value": {
+                        "newCardsPerDay": 20,
+                        "maxReviewsPerDay": 150,
+                        "learningStepsMinutes": [1, 10],
+                        "graduatingIntervalDays": 1,
+                        "easyIntervalDays": 4,
+                        "startingEase": 2.5,
+                        "easyBonus": 1.3,
+                        "intervalModifier": 1,
+                        "minimumEase": 1.3
+                    }
+                }
+            ]
+
             # Construir payload de respaldo estándar de RubikBLD
             backup_payload = {
                 "version": 1,
                 "timestamp": now_ms,
                 "appName": "RubikBLD",
                 "data": {
-                    "schemes": [],
+                    "schemes": [user_scheme],
                     "pairs": pairs_list,
                     "cards": cards_list,
                     "reviews": [],
-                    "settings": []
+                    "settings": user_settings
                 }
             }
 
