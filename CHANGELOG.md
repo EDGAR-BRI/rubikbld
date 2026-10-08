@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.2.1] - 2026-10-08
+- 🧹 chore(config): configurar exclusion de entornos y plantilla .env.example
+
 ## [0.2.0] - 2026-10-08
 - 🚀 feat: integrar Vercel Web Analytics para conteo de visitantes y vistas de página
 
