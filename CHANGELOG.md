@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.10.2] - 2026-10-08
+- 🛠️ refactor(study): simplificar volteo de tarjeta y mostrar atajo espacio integrado
+
 ## [0.10.1] - 2026-10-08
 - • style(ui): unificar paleta verde bld, transiciones modales y dependencias
 

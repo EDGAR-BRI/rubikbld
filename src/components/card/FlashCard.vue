@@ -503,14 +503,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           </div>
 
           <!-- Bottom hint -->
-          <div class="w-full flex items-center justify-between text-slate-500 text-xs px-1">
-            <span class="flex items-center gap-1">
-              <AppIcon name="lucide:hand" :size="14" class="text-slate-400" />
-              <span>Toca para voltear</span>
-            </span>
-            <span class="font-mono text-[10px] text-slate-500 hidden sm:inline">
-              [Espacio]
-            </span>
+          <div class="w-full flex items-center justify-center text-slate-400 text-xs py-1">
+            <div class="flex items-center gap-1.5">
+              <AppIcon name="lucide:hand" :size="15" class="text-slate-400" />
+              <span>Toca para voltear <span class="hidden sm:inline text-slate-500 font-mono text-[11px]">(Espacio)</span></span>
+            </div>
           </div>
         </div>
 

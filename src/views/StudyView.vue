@@ -183,36 +183,15 @@ async function onRefreshSession() {
           />
         </div>
 
-        <!-- Controles de la parte inferior -->
-        <div class="w-full pt-3 pb-1">
-          <!-- Si la tarjeta no se ha volteado aún -->
-          <div v-if="!reviewStore.isFlipped" class="w-full max-w-sm mx-auto">
-            <AppButton
-              variant="primary"
-              size="lg"
-              class="w-full font-bold shadow-green-600/30"
-              icon="lucide:eye"
-              @click="reviewStore.flip"
-            >
-              Mostrar Respuesta (Espacio)
-            </AppButton>
-          </div>
+        <!-- Controles de la parte inferior (Solo visibles al voltear la tarjeta) -->
+        <div v-if="reviewStore.isFlipped" class="w-full pt-3 pb-1">
+          <RatingButtons
+            :intervals="reviewStore.buttonIntervals"
+            @rate="reviewStore.rate"
+          />
 
-          <!-- Si la tarjeta ya fue volteada: Botones AnkiDroid -->
-          <div v-else>
-            <RatingButtons
-              :intervals="reviewStore.buttonIntervals"
-              @rate="reviewStore.rate"
-            />
-          </div>
-
-          <!-- Indicador de atajos de teclado para PC (Espacio, 1-4, E) -->
+          <!-- Indicador de atajos de teclado para PC (1-4, E) -->
           <div class="hidden sm:flex items-center justify-center gap-4 text-[11px] text-slate-500 mt-2.5 font-mono select-none">
-            <span class="flex items-center gap-1.5">
-              <kbd class="px-1.5 py-0.5 bg-dark-900 border border-dark-800 rounded text-slate-400 text-[10px]">Espacio</kbd>
-              <span>Voltear</span>
-            </span>
-            <span class="text-slate-700">•</span>
             <span class="flex items-center gap-1.5">
               <kbd class="px-1.5 py-0.5 bg-dark-900 border border-dark-800 rounded text-slate-400 text-[10px]">1 - 4</kbd>
               <span>Calificar</span>
