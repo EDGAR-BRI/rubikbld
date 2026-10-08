@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useReviewStore } from '@/stores/useReviewStore'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import type { PairItem } from '@/models/pair'
@@ -18,8 +18,36 @@ const settingsStore = useSettingsStore()
 const editingPair = ref<PairItem | null>(null)
 const showEditModal = ref(false)
 
+const hasCards = computed(() => !!reviewStore.currentCard && !!reviewStore.currentPair)
+
+function onKeyDown(e: KeyboardEvent) {
+  if (showEditModal.value) return
+  if (
+    e.target instanceof HTMLInputElement ||
+    e.target instanceof HTMLTextAreaElement ||
+    e.target instanceof HTMLSelectElement
+  ) {
+    return
+  }
+
+  if (e.code === 'Space' || e.key === ' ') {
+    if (hasCards.value && !reviewStore.isFlipped) {
+      e.preventDefault()
+      reviewStore.flip()
+    }
+  } else if ((e.key === 'e' || e.key === 'E') && hasCards.value && reviewStore.currentPair) {
+    e.preventDefault()
+    onOpenEdit(reviewStore.currentPair)
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', onKeyDown)
   await reviewStore.loadReviewSession()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
 })
 
 function onOpenEdit(pair: PairItem) {
@@ -41,8 +69,6 @@ async function onRefreshSession() {
   await reviewStore.loadReviewSession()
   showSuccessToast('Sesión actualizada', 'Se verificó la cola de repaso')
 }
-
-const hasCards = computed(() => !!reviewStore.currentCard && !!reviewStore.currentPair)
 </script>
 
 <template>
@@ -152,6 +178,24 @@ const hasCards = computed(() => !!reviewStore.currentCard && !!reviewStore.curre
               :intervals="reviewStore.buttonIntervals"
               @rate="reviewStore.rate"
             />
+          </div>
+
+          <!-- Indicador de atajos de teclado para PC (Espacio, 1-4, E) -->
+          <div class="hidden sm:flex items-center justify-center gap-4 text-[11px] text-slate-500 mt-2.5 font-mono select-none">
+            <span class="flex items-center gap-1.5">
+              <kbd class="px-1.5 py-0.5 bg-dark-900 border border-dark-800 rounded text-slate-400 text-[10px]">Espacio</kbd>
+              <span>Voltear</span>
+            </span>
+            <span class="text-slate-700">•</span>
+            <span class="flex items-center gap-1.5">
+              <kbd class="px-1.5 py-0.5 bg-dark-900 border border-dark-800 rounded text-slate-400 text-[10px]">1 - 4</kbd>
+              <span>Calificar</span>
+            </span>
+            <span class="text-slate-700">•</span>
+            <span class="flex items-center gap-1.5">
+              <kbd class="px-1.5 py-0.5 bg-dark-900 border border-dark-800 rounded text-slate-400 text-[10px]">E</kbd>
+              <span>Editar</span>
+            </span>
           </div>
         </div>
       </template>

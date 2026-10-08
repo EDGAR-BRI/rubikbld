@@ -171,46 +171,49 @@ function onListScroll(event: Event) {
 
     <!-- Barra de progreso y estadísticas detalladas por uso -->
     <div class="px-4 py-2.5 bg-dark-900/60 border-b border-dark-800/80 shrink-0">
-      <div class="flex items-center justify-between text-xs mb-1.5">
-        <span class="text-slate-400 font-medium">
-          Progreso de tu lista de pares
-        </span>
-        <span class="font-mono font-bold text-indigo-400">
-          {{ pairsStore.stats.completed }} / {{ pairsStore.stats.total }} ({{ pairsStore.stats.percentage }}%)
-        </span>
-      </div>
+      <div class="max-w-lg md:max-w-6xl mx-auto w-full">
+        <div class="flex items-center justify-between text-xs mb-1.5">
+          <span class="text-slate-400 font-medium">
+            Progreso de tu lista de pares
+          </span>
+          <span class="font-mono font-bold text-indigo-400">
+            {{ pairsStore.stats.completed }} / {{ pairsStore.stats.total }} ({{ pairsStore.stats.percentage }}%)
+          </span>
+        </div>
 
-      <!-- Barra de progreso animada -->
-      <div class="w-full h-2 bg-dark-800 rounded-full overflow-hidden flex">
-        <div
-          class="bg-indigo-500 h-full transition-all duration-300"
-          :style="{ width: `${pairsStore.stats.percentage}%` }"
-        />
-      </div>
+        <!-- Barra de progreso animada -->
+        <div class="w-full h-2 bg-dark-800 rounded-full overflow-hidden flex">
+          <div
+            class="bg-indigo-500 h-full transition-all duration-300"
+            :style="{ width: `${pairsStore.stats.percentage}%` }"
+          />
+        </div>
 
-      <!-- Métricas y etiquetas de uso -->
-      <div class="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-400">
-        <span class="flex items-center gap-1 font-medium">
-          <span class="w-2 h-2 rounded-full bg-purple-400" />
-          {{ pairsStore.stats.bothCount }} Ambas
-        </span>
-        <span class="flex items-center gap-1 font-medium">
-          <span class="w-2 h-2 rounded-full bg-amber-400" />
-          {{ pairsStore.stats.cornerOnlyCount }} Solo Esquinas
-        </span>
-        <span class="flex items-center gap-1 font-medium">
-          <span class="w-2 h-2 rounded-full bg-emerald-400" />
-          {{ pairsStore.stats.edgeOnlyCount }} Solo Aristas
-        </span>
-        <span class="flex items-center gap-1 font-medium ml-auto">
-          <AppIcon name="lucide:image" :size="12" class-name="text-indigo-400" />
-          {{ pairsStore.stats.withImage }} con foto
-        </span>
+        <!-- Métricas y etiquetas de uso -->
+        <div class="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-400">
+          <span class="flex items-center gap-1 font-medium">
+            <span class="w-2 h-2 rounded-full bg-purple-400" />
+            {{ pairsStore.stats.bothCount }} Ambas
+          </span>
+          <span class="flex items-center gap-1 font-medium">
+            <span class="w-2 h-2 rounded-full bg-amber-400" />
+            {{ pairsStore.stats.cornerOnlyCount }} Solo Esquinas
+          </span>
+          <span class="flex items-center gap-1 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400" />
+            {{ pairsStore.stats.edgeOnlyCount }} Solo Aristas
+          </span>
+          <span class="flex items-center gap-1 font-medium ml-auto">
+            <AppIcon name="lucide:image" :size="12" class-name="text-indigo-400" />
+            {{ pairsStore.stats.withImage }} con foto
+          </span>
+        </div>
       </div>
     </div>
 
     <!-- Filtros de búsqueda y uso -->
     <div class="p-3 border-b border-dark-900 flex flex-col gap-2.5 shrink-0 bg-dark-950">
+      <div class="max-w-lg md:max-w-6xl mx-auto w-full flex flex-col gap-2.5">
       <!-- Fila Buscador y Botón de Filtros -->
       <div class="flex items-center gap-2 w-full">
         <div class="flex-1 min-w-0 transition-all duration-300">
@@ -357,16 +360,17 @@ function onListScroll(event: Event) {
         </div>
       </Transition>
     </div>
+  </div>
 
     <!-- Contenedor con scroll para Lista o Matriz -->
-    <div class="flex-1 overflow-y-auto p-3" @scroll="onListScroll">
+    <div class="flex-1 overflow-y-auto p-3 md:p-6" @scroll="onListScroll">
       <!-- Loading State -->
       <div v-if="pairsStore.loading" class="flex items-center justify-center py-20">
         <RubikLoader label="Cargando pares de letras..." />
       </div>
 
-      <!-- VISTA LISTA: Carga incremental fluida e instantánea -->
-      <div v-else-if="viewMode === 'list'" class="flex flex-col gap-2 max-w-lg mx-auto">
+      <!-- VISTA LISTA: Carga incremental fluida e instantánea en cuadrícula para Desktop -->
+      <div v-else-if="viewMode === 'list'" class="max-w-lg md:max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
         <div
           v-for="item in displayedPairs"
           :key="item.id"
@@ -430,13 +434,13 @@ function onListScroll(event: Event) {
         <!-- Empty state si no hay resultados -->
         <div
           v-if="pairsStore.filteredPairs.length === 0"
-          class="py-12 text-center text-slate-500 text-xs"
+          class="col-span-full py-12 text-center text-slate-500 text-xs"
         >
           No se encontraron pares con estos filtros.
         </div>
 
         <!-- Sentinel invisible para scroll infinito sin retrasos -->
-        <div ref="sentinelRef" class="h-6 flex items-center justify-center">
+        <div ref="sentinelRef" class="col-span-full h-8 flex items-center justify-center">
           <span
             v-if="hasMore"
             class="text-[11px] text-slate-500 cursor-pointer hover:text-slate-300 py-2"
@@ -454,7 +458,7 @@ function onListScroll(event: Event) {
       </div>
 
       <!-- VISTA MATRIZ -->
-      <div v-else class="max-w-4xl mx-auto">
+      <div v-else class="max-w-4xl md:max-w-6xl mx-auto w-full">
         <PairGrid
           :pairs="pairsStore.filteredPairs"
           :letters="pairsStore.availableLetters"

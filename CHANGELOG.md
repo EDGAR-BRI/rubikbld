@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.6.0] - 2026-10-08
+- 🚀 feat(ui): agregar sidebar de escritorio, atajos de teclado y diseno adaptativo
+
 ## [0.5.0] - 2026-10-08
 - 🚀 feat(sync): incorporar cierre de sesion y client id por defecto en google drive
 

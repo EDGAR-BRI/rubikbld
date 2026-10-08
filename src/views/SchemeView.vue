@@ -176,37 +176,34 @@ function getFaceColor(stickerId: string) {
 
 <template>
   <div class="flex-1 flex flex-col h-full overflow-hidden bg-dark-950">
-    <AppHeader
-      title="Esquema del Cubo"
-      :subtitle="viewMode === '3d' ? 'Vista 3D interactiva y editable' : 'Configura tus letras y buffers'"
-    >
+    <AppHeader title="Esquema del Cubo">
       <template #actions>
-        <div class="flex items-center gap-2">
-          <!-- Switch Vista 2D / 3D con estilo idéntico al de Pares -->
-          <div class="flex items-center bg-dark-900 border border-dark-800 p-0.5 rounded-xl">
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <!-- Switch Vista 2D / 3D con estilo compacto (solo iconos en móvil) -->
+          <div class="h-[30px] inline-flex items-center bg-dark-900 border border-dark-700/80 p-0.5 rounded-lg gap-0.5">
             <button
               type="button"
               :class="[
-                'p-1.5 rounded-lg transition-colors flex items-center gap-1.5 px-2.5',
+                'h-full w-7 sm:w-auto sm:px-2.5 flex items-center justify-center sm:gap-1.5 rounded-md transition-all duration-150',
                 viewMode === '2d' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white',
               ]"
               title="Vista 2D Desplegada"
               @click="viewMode = '2d'"
             >
-              <AppIcon name="lucide:grid-2x2" :size="15" />
-              <span class="text-xs font-semibold">2D</span>
+              <AppIcon name="lucide:grid-2x2" :size="14" />
+              <span class="hidden sm:inline text-xs font-semibold">2D</span>
             </button>
             <button
               type="button"
               :class="[
-                'p-1.5 rounded-lg transition-colors flex items-center gap-1.5 px-2.5',
+                'h-full w-7 sm:w-auto sm:px-2.5 flex items-center justify-center sm:gap-1.5 rounded-md transition-all duration-150',
                 viewMode === '3d' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white',
               ]"
               title="Vista 3D Interactiva"
               @click="viewMode = '3d'"
             >
-              <AppIcon name="lucide:box" :size="15" />
-              <span class="text-xs font-semibold">3D</span>
+              <AppIcon name="lucide:box" :size="14" />
+              <span class="hidden sm:inline text-xs font-semibold">3D</span>
             </button>
           </div>
 
@@ -214,9 +211,11 @@ function getFaceColor(stickerId: string) {
             size="sm"
             variant="outline"
             icon="lucide:rotate-ccw"
+            class="w-[30px] sm:w-auto !px-0 sm:!px-2.5"
+            title="Restablecer letras a Speffz"
             @click="onResetSpeffz"
           >
-            Speffz
+            <span class="hidden sm:inline">Speffz</span>
           </AppButton>
         </div>
       </template>
@@ -225,7 +224,7 @@ function getFaceColor(stickerId: string) {
     <div v-if="schemeStore.loading" class="flex-1 flex items-center justify-center p-4">
       <RubikLoader label="Cargando esquema del cubo..." />
     </div>
-    <div v-else class="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full">
+    <div v-else class="flex-1 overflow-y-auto p-4 md:p-6 pb-28 md:pb-12 max-w-lg md:max-w-4xl mx-auto w-full">
       <!-- Tarjetas de buffers activos -->
       <div class="grid grid-cols-2 gap-3 mb-6">
         <!-- Buffer Esquinas -->
