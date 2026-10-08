@@ -7,6 +7,11 @@ import {
   getBufferStickerInfo,
   type LetterSchemeConfig,
 } from '@/models/cube'
+import { usePairsStore } from './usePairsStore'
+
+function toRawScheme(scheme: LetterSchemeConfig): LetterSchemeConfig {
+  return JSON.parse(JSON.stringify(scheme))
+}
 
 export const useSchemeStore = defineStore('scheme', () => {
   const currentScheme = ref<LetterSchemeConfig>({ ...DEFAULT_SCHEME_3X3 })
@@ -23,7 +28,7 @@ export const useSchemeStore = defineStore('scheme', () => {
         schemeToUse = found
       } else {
         schemeToUse = { ...DEFAULT_SCHEME_3X3 }
-        await db.schemes.put(schemeToUse)
+        await db.schemes.put(toRawScheme(schemeToUse))
       }
 
       // Asegurar que las piezas del buffer queden sin letra (buffer y contrapartes)
@@ -32,8 +37,15 @@ export const useSchemeStore = defineStore('scheme', () => {
       currentScheme.value = cleaned
 
       if (hasDifferences) {
-        await db.schemes.put(cleaned)
-        await db.syncPairsWithScheme(cleaned)
+        const raw = toRawScheme(cleaned)
+        await db.schemes.put(raw)
+        try {
+          await db.syncPairsWithScheme(raw)
+          const pairsStore = usePairsStore()
+          await pairsStore.loadPairs(true)
+        } catch (syncErr) {
+          console.error('Error sincronizando pares en loadScheme:', syncErr)
+        }
       }
     } finally {
       loading.value = false
@@ -51,13 +63,23 @@ export const useSchemeStore = defineStore('scheme', () => {
       ...currentScheme.value.stickers,
       [id]: letter.trim().toUpperCase(),
     }
-    currentScheme.value = {
+    const updated: LetterSchemeConfig = {
       ...currentScheme.value,
       stickers: nextStickers,
     }
-    await db.schemes.put(currentScheme.value)
-    // Sincronizar pares en segundo plano
-    await db.syncPairsWithScheme(currentScheme.value)
+    currentScheme.value = updated
+
+    const raw = toRawScheme(updated)
+    await db.schemes.put(raw)
+
+    // Sincronizar pares en segundo plano de forma segura
+    try {
+      await db.syncPairsWithScheme(raw)
+      const pairsStore = usePairsStore()
+      await pairsStore.loadPairs(true)
+    } catch (syncErr) {
+      console.error('Error sincronizando pares tras actualizar sticker:', syncErr)
+    }
   }
 
   async function updateBuffer(type: 'corner' | 'edge', stickerId: string) {
@@ -73,14 +95,30 @@ export const useSchemeStore = defineStore('scheme', () => {
     const cleaned = cleanSchemeBufferLetters(updated)
     currentScheme.value = cleaned
 
-    await db.schemes.put(cleaned)
-    await db.syncPairsWithScheme(cleaned)
+    const raw = toRawScheme(cleaned)
+    await db.schemes.put(raw)
+
+    try {
+      await db.syncPairsWithScheme(raw)
+      const pairsStore = usePairsStore()
+      await pairsStore.loadPairs(true)
+    } catch (syncErr) {
+      console.error('Error sincronizando pares tras actualizar buffer:', syncErr)
+    }
   }
 
   async function resetToSpeffz() {
     currentScheme.value = cleanSchemeBufferLetters({ ...DEFAULT_SCHEME_3X3 })
-    await db.schemes.put(currentScheme.value)
-    await db.syncPairsWithScheme(currentScheme.value)
+    const raw = toRawScheme(currentScheme.value)
+    await db.schemes.put(raw)
+
+    try {
+      await db.syncPairsWithScheme(raw)
+      const pairsStore = usePairsStore()
+      await pairsStore.loadPairs(true)
+    } catch (syncErr) {
+      console.error('Error sincronizando pares tras resetear a Speffz:', syncErr)
+    }
   }
 
   return {
@@ -92,3 +130,4 @@ export const useSchemeStore = defineStore('scheme', () => {
     resetToSpeffz,
   }
 })
+

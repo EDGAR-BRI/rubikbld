@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.7.0] - 2026-10-08
+- 🚀 feat(scheme): alinear cara azul en 2d con 3d y validar letras duplicadas
+
 ## [0.6.0] - 2026-10-08
 - 🚀 feat(ui): agregar sidebar de escritorio, atajos de teclado y diseno adaptativo
 

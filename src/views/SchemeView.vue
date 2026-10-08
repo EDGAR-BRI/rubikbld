@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useSchemeStore } from '@/stores/useSchemeStore'
 import {
   FACE_COLORS,
@@ -7,6 +7,8 @@ import {
   getPieceName,
   getPieceStickers,
   getBufferStickerInfo,
+  getSchemeDuplicateStickers,
+  findStickerLetterConflicts,
   type CubeFace,
 } from '@/models/cube'
 import AppHeader from '@/components/ui/AppHeader.vue'
@@ -17,13 +19,24 @@ import AppInput from '@/components/ui/AppInput.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import RubikLoader from '@/components/RubikLoader.vue'
 import Cube3D from '@/components/scheme/Cube3D.vue'
-import { showSuccessToast, confirmResetScheme } from '@/utils/alerts'
+import { showSuccessToast, showErrorToast, confirmResetScheme } from '@/utils/alerts'
 
 const schemeStore = useSchemeStore()
 
 // En el despliegue 2D, la cara D (abajo) conecta con la cara F por su fila superior (DFL=D6, DF=D7, DFR=D8).
 // Invertimos las filas para que el buffer DF (D7) y las esquinas (D6, D8) toquen directamente con la cara F.
 const D_FACE_STICKER_ORDER = [6, 7, 8, 3, 4, 5, 0, 1, 2]
+
+// En la cara B (Azul), al mirar el cubo desde atrás (como en la vista 3D) o al desplegarla a la derecha de R,
+// la columna izquierda bordea con la cara R (UBR=B2, BR=B5, DBR=B8) y la derecha con L (UBL=B0, BL=B3, DBL=B6).
+// Invertimos las columnas para que coincida exactamente con la vista 3D (2, 1, 0 / 5, 4, 3 / 8, 7, 6).
+const B_FACE_STICKER_ORDER = [2, 1, 0, 5, 4, 3, 8, 7, 6]
+
+function getFaceStickerOrder(face: CubeFace): number[] {
+  if (face === 'B') return B_FACE_STICKER_ORDER
+  if (face === 'D') return D_FACE_STICKER_ORDER
+  return [0, 1, 2, 3, 4, 5, 6, 7, 8]
+}
 
 const viewMode = ref<'2d' | '3d'>(
   (localStorage.getItem('rubik_scheme_view') as '2d' | '3d') || '2d',
@@ -48,7 +61,26 @@ const selectedSticker = ref<{
 
 const editLetterInput = ref('')
 const showStickerModal = ref(false)
-const letterInputRef = ref<InstanceType<typeof AppInput> | null>(null)
+const isSaving = ref(false)
+
+
+// Mapa de letras duplicadas por tipo de pieza (esquina con esquina, arista con arista)
+const duplicateStickersMap = computed(() => {
+  return getSchemeDuplicateStickers(schemeStore.currentScheme)
+})
+
+const duplicateLettersCount = computed(() => {
+  return duplicateStickersMap.value.size
+})
+
+const duplicateConflictInEdit = computed(() => {
+  if (!selectedSticker.value || selectedSticker.value.isBuffer) return []
+  return findStickerLetterConflicts(
+    schemeStore.currentScheme,
+    selectedSticker.value.id,
+    editLetterInput.value,
+  )
+})
 
 onMounted(async () => {
   await schemeStore.loadScheme()
@@ -57,6 +89,8 @@ onMounted(async () => {
 function getStickerDisplay(id: string) {
   const bufferInfo = getBufferStickerInfo(schemeStore.currentScheme, id)
   const letter = schemeStore.currentScheme.stickers[id] || ''
+  const isDupe = duplicateStickersMap.value.has(id)
+  const conflictIds = duplicateStickersMap.value.get(id) || []
 
   if (bufferInfo.isBuffer) {
     const isCorner = bufferInfo.pieceType === 'corner'
@@ -65,18 +99,27 @@ function getStickerDisplay(id: string) {
       pieceType: bufferInfo.pieceType,
       isPrimary: bufferInfo.isPrimary,
       label: bufferInfo.isPrimary ? 'BUF' : '',
+      isDuplicate: false,
+      duplicateTitle: '',
       classes: isCorner
         ? 'border-purple-400 ring-2 ring-purple-400/50 shadow-purple-900/20'
-        : 'border-indigo-400 ring-2 ring-indigo-400/50 shadow-indigo-900/20',
-      badgeClass: isCorner ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white',
+        : 'border-green-400 ring-2 ring-green-400/50 shadow-green-900/20',
+      badgeClass: isCorner ? 'bg-purple-600 text-white' : 'bg-green-600 text-white',
     }
   }
 
+  const pType = pieceTypeOf(id, schemeStore.currentScheme.gridSize || 3)
+  const pLabel = pType === 'corner' ? 'esquinas' : 'aristas'
+
   return {
     isBuffer: false,
-    pieceType: null,
+    pieceType: pType,
     isPrimary: false,
     label: letter,
+    isDuplicate: isDupe,
+    duplicateTitle: isDupe
+      ? `Letra repetida en ${pLabel}: también asignada en ${conflictIds.join(', ')}`
+      : '',
     classes: 'border-slate-300/40',
     badgeClass: '',
   }
@@ -103,45 +146,56 @@ function openSticker(face: CubeFace, index: number) {
   editLetterInput.value = letter
   showStickerModal.value = true
 
-  if (!bufferInfo.isBuffer) {
-    nextTick(() => {
-      letterInputRef.value?.focus()
-      letterInputRef.value?.select()
-    })
-    setTimeout(() => {
-      letterInputRef.value?.focus()
-      letterInputRef.value?.select()
-    }, 60)
-  }
+  // El autofoco lo gestiona AppInput con preventScroll tras completar la transición
 }
 
+
 async function saveStickerLetter() {
-  if (!selectedSticker.value) return
+  if (!selectedSticker.value || isSaving.value) return
   const stickerId = selectedSticker.value.id
   const letterVal = editLetterInput.value.trim().toUpperCase()
 
-  showStickerModal.value = false
-
-  await schemeStore.updateSticker(stickerId, letterVal)
-  showSuccessToast(
-    `Sticker ${stickerId} guardado`,
-    letterVal ? `Letra asignada: "${letterVal}"` : 'Sin letra asignada',
-  )
+  isSaving.value = true
+  try {
+    await schemeStore.updateSticker(stickerId, letterVal)
+    showStickerModal.value = false
+    showSuccessToast(
+      `Sticker ${stickerId} guardado`,
+      letterVal ? `Letra asignada: "${letterVal}"` : 'Sin letra asignada',
+    )
+  } catch (err: any) {
+    console.error('Error al guardar sticker:', err)
+    showErrorToast(
+      'Error al guardar',
+      err?.message || 'No se pudo guardar la letra del sticker',
+    )
+  } finally {
+    isSaving.value = false
+  }
 }
 
 async function setAsBuffer(type: 'corner' | 'edge') {
-  if (!selectedSticker.value) return
+  if (!selectedSticker.value || isSaving.value) return
   const stickerId = selectedSticker.value.id
   const label = type === 'corner' ? 'Esquinas' : 'Aristas'
 
-  showStickerModal.value = false
-
-  await schemeStore.updateBuffer(type, stickerId)
-
-  showSuccessToast(
-    `Buffer de ${label} actualizado`,
-    `Pieza asignada a ${stickerId}. Todas las caras de esta pieza quedaron sin letra.`,
-  )
+  isSaving.value = true
+  try {
+    await schemeStore.updateBuffer(type, stickerId)
+    showStickerModal.value = false
+    showSuccessToast(
+      `Buffer de ${label} actualizado`,
+      `Pieza asignada a ${stickerId}. Todas las caras de esta pieza quedaron sin letra.`,
+    )
+  } catch (err: any) {
+    console.error('Error al actualizar buffer:', err)
+    showErrorToast(
+      'Error al actualizar buffer',
+      err?.message || 'No se pudo actualizar el buffer',
+    )
+  } finally {
+    isSaving.value = false
+  }
 }
 
 async function onResetSpeffz() {
@@ -185,7 +239,7 @@ function getFaceColor(stickerId: string) {
               type="button"
               :class="[
                 'h-full w-7 sm:w-auto sm:px-2.5 flex items-center justify-center sm:gap-1.5 rounded-md transition-all duration-150',
-                viewMode === '2d' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white',
+                viewMode === '2d' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-400 hover:text-white',
               ]"
               title="Vista 2D Desplegada"
               @click="viewMode = '2d'"
@@ -197,7 +251,7 @@ function getFaceColor(stickerId: string) {
               type="button"
               :class="[
                 'h-full w-7 sm:w-auto sm:px-2.5 flex items-center justify-center sm:gap-1.5 rounded-md transition-all duration-150',
-                viewMode === '3d' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white',
+                viewMode === '3d' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-400 hover:text-white',
               ]"
               title="Vista 3D Interactiva"
               @click="viewMode = '3d'"
@@ -296,26 +350,26 @@ function getFaceColor(stickerId: string) {
         <!-- Buffer Aristas -->
         <button
           type="button"
-          class="text-left bg-gradient-to-br from-indigo-950/40 via-dark-900 to-dark-950 border border-indigo-500/25 hover:border-indigo-400/50 rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-between transition-all duration-200 active:scale-[0.98] shadow-lg shadow-indigo-950/20 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          class="text-left bg-gradient-to-br from-green-950/40 via-dark-900 to-dark-950 border border-green-500/25 hover:border-green-400/50 rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-between transition-all duration-200 active:scale-[0.98] shadow-lg shadow-green-950/20 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500/40"
           title="Toca para ver o configurar el buffer de aristas"
           @click="openBuffer('edge')"
         >
           <!-- Efecto de brillo de fondo -->
-          <div class="absolute -top-10 -right-10 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-indigo-500/20 transition-colors"></div>
+          <div class="absolute -top-10 -right-10 w-24 h-24 bg-green-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-green-500/20 transition-colors"></div>
 
           <div>
             <!-- Header de la tarjeta -->
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-1.5">
-                <span class="w-6 h-6 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-xs">
+                <span class="w-6 h-6 rounded-lg bg-green-500/15 border border-green-500/30 flex items-center justify-center text-green-400 shadow-xs">
                   <AppIcon name="lucide:split" :size="13" />
                 </span>
                 <div>
-                  <span class="text-[9px] font-black uppercase tracking-wider text-indigo-400 block leading-tight">Buffer</span>
+                  <span class="text-[9px] font-black uppercase tracking-wider text-green-400 block leading-tight">Buffer</span>
                   <span class="text-xs font-bold text-slate-200 block leading-tight">Aristas</span>
                 </div>
               </div>
-              <span class="w-5 h-5 rounded-md flex items-center justify-center text-slate-500 group-hover:text-indigo-300 transition-colors">
+              <span class="w-5 h-5 rounded-md flex items-center justify-center text-slate-500 group-hover:text-green-300 transition-colors">
                 <AppIcon name="lucide:sliders-horizontal" :size="12" />
               </span>
             </div>
@@ -325,14 +379,14 @@ function getFaceColor(stickerId: string) {
               <span class="font-mono font-black text-xl text-white tracking-wide">
                 {{ getPieceName(schemeStore.currentScheme.buffers.edge) }}
               </span>
-              <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+              <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-green-500/15 text-green-300 border border-green-500/25">
                 Base: {{ schemeStore.currentScheme.buffers.edge }}
               </span>
             </div>
           </div>
 
           <!-- Stickers físicos de la pieza con sus colores reales -->
-          <div class="mt-3 pt-2 border-t border-indigo-500/15 flex flex-col gap-1.5">
+          <div class="mt-3 pt-2 border-t border-green-500/15 flex flex-col gap-1.5">
             <div class="flex items-center justify-between text-[10px] text-slate-400 font-medium">
               <span>Caras</span>
               <span class="text-[9px] text-amber-400 font-mono flex items-center gap-0.5">
@@ -360,6 +414,19 @@ function getFaceColor(stickerId: string) {
         </button>
       </div>
 
+      <!-- Alerta visual si existen letras repetidas -->
+      <div
+        v-if="duplicateLettersCount > 0"
+        class="mb-4 px-3.5 py-2.5 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center justify-between gap-3 text-xs text-red-200 shadow-sm"
+      >
+        <div class="flex items-center gap-2">
+          <AppIcon name="lucide:alert-circle" :size="16" class-name="text-red-400 shrink-0" />
+          <span>
+            Hay <strong>{{ duplicateLettersCount }}</strong> pegatinas con letra repetida señaladas con <strong class="underline decoration-red-400 decoration-2">subrayado rojo</strong>.
+          </span>
+        </div>
+      </div>
+
       <!-- VISTA 2D: Despliegue plano tradicional del Cubo -->
       <div v-if="viewMode === '2d'">
         <p class="text-xs text-slate-400 mb-4 text-center">
@@ -375,25 +442,34 @@ function getFaceColor(stickerId: string) {
             </span>
             <div class="grid grid-cols-3 gap-1.5 p-2 bg-dark-900 border border-dark-800 rounded-2xl shadow-md">
               <button
-                v-for="idx in 9"
-                :key="`U${idx-1}`"
+                v-for="sIdx in getFaceStickerOrder('U')"
+                :key="`U${sIdx}`"
                 type="button"
                 :class="[
                   'w-11 h-11 rounded-xl flex flex-col items-center justify-center font-mono font-bold text-sm transition-transform active:scale-90 border',
-                  getStickerDisplay(`U${idx-1}`).classes,
+                  getStickerDisplay(`U${sIdx}`).classes,
                 ]"
                 :style="{ backgroundColor: FACE_COLORS['U'].bg, color: FACE_COLORS['U'].text }"
-                @click="openSticker('U', idx-1)"
+                :title="getStickerDisplay(`U${sIdx}`).duplicateTitle || undefined"
+                @click="openSticker('U', sIdx)"
               >
-                <template v-if="getStickerDisplay(`U${idx-1}`).isPrimary">
-                  <span :class="['text-[9px] font-black uppercase px-1 py-0.5 rounded leading-none', getStickerDisplay(`U${idx-1}`).badgeClass]">
+                <template v-if="getStickerDisplay(`U${sIdx}`).isPrimary">
+                  <span :class="['text-[9px] font-black uppercase px-1 py-0.5 rounded leading-none', getStickerDisplay(`U${sIdx}`).badgeClass]">
                     BUF
                   </span>
                 </template>
                 <template v-else>
-                  <span>{{ getStickerDisplay(`U${idx-1}`).label }}</span>
+                  <span
+                    :class="[
+                      getStickerDisplay(`U${sIdx}`).isDuplicate
+                        ? 'underline decoration-red-500 decoration-[2.5px] underline-offset-[3px] font-black'
+                        : '',
+                    ]"
+                  >
+                    {{ getStickerDisplay(`U${sIdx}`).label }}
+                  </span>
                 </template>
-                <span class="text-[8px] opacity-60 font-sans">U{{ idx-1 }}</span>
+                <span class="text-[8px] opacity-60 font-sans">U{{ sIdx }}</span>
               </button>
             </div>
           </div>
@@ -411,25 +487,36 @@ function getFaceColor(stickerId: string) {
                 </span>
                 <div class="grid grid-cols-3 gap-1.5 p-2 bg-dark-900 border border-dark-800 rounded-2xl shadow-md">
                   <button
-                    v-for="idx in 9"
-                    :key="`${face}${idx-1}`"
+                    v-for="sIdx in getFaceStickerOrder(face)"
+                    :key="`${face}${sIdx}`"
                     type="button"
                     :class="[
                       'w-10 h-10 rounded-xl flex flex-col items-center justify-center font-mono font-bold text-sm transition-transform active:scale-90 border',
-                      getStickerDisplay(`${face}${idx-1}`).classes,
+                      getStickerDisplay(`${face}${sIdx}`).classes,
                     ]"
                     :style="{ backgroundColor: FACE_COLORS[face].bg, color: FACE_COLORS[face].text }"
-                    @click="openSticker(face, idx-1)"
+                    :title="getStickerDisplay(`${face}${sIdx}`).duplicateTitle || undefined"
+                    @click="openSticker(face, sIdx)"
                   >
-                    <template v-if="getStickerDisplay(`${face}${idx-1}`).isPrimary">
-                      <span :class="['text-[8px] font-black uppercase px-1 py-0.5 rounded leading-none', getStickerDisplay(`${face}${idx-1}`).badgeClass]">
+                    <template v-if="getStickerDisplay(`${face}${sIdx}`).isPrimary">
+                      <span :class="['text-[8px] font-black uppercase px-1 py-0.5 rounded leading-none', getStickerDisplay(`${face}${sIdx}`).badgeClass]">
                         BUF
                       </span>
                     </template>
                     <template v-else>
-                      <span>{{ getStickerDisplay(`${face}${idx-1}`).label }}</span>
+                      <span
+                        :class="[
+                          getStickerDisplay(`${face}${sIdx}`).isDuplicate
+                            ? (face === 'R'
+                                ? 'underline decoration-red-300 decoration-[2.5px] underline-offset-[3px] font-black drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]'
+                                : 'underline decoration-red-500 decoration-[2.5px] underline-offset-[3px] font-black')
+                            : '',
+                        ]"
+                      >
+                        {{ getStickerDisplay(`${face}${sIdx}`).label }}
+                      </span>
                     </template>
-                    <span class="text-[8px] opacity-70 font-sans">{{ face }}{{ idx-1 }}</span>
+                    <span class="text-[8px] opacity-70 font-sans">{{ face }}{{ sIdx }}</span>
                   </button>
                 </div>
               </div>
@@ -443,7 +530,7 @@ function getFaceColor(stickerId: string) {
             </span>
             <div class="grid grid-cols-3 gap-1.5 p-2 bg-dark-900 border border-dark-800 rounded-2xl shadow-md">
               <button
-                v-for="sIdx in D_FACE_STICKER_ORDER"
+                v-for="sIdx in getFaceStickerOrder('D')"
                 :key="`D${sIdx}`"
                 type="button"
                 :class="[
@@ -451,6 +538,7 @@ function getFaceColor(stickerId: string) {
                   getStickerDisplay(`D${sIdx}`).classes,
                 ]"
                 :style="{ backgroundColor: FACE_COLORS['D'].bg, color: FACE_COLORS['D'].text }"
+                :title="getStickerDisplay(`D${sIdx}`).duplicateTitle || undefined"
                 @click="openSticker('D', sIdx)"
               >
                 <template v-if="getStickerDisplay(`D${sIdx}`).isPrimary">
@@ -459,7 +547,15 @@ function getFaceColor(stickerId: string) {
                   </span>
                 </template>
                 <template v-else>
-                  <span>{{ getStickerDisplay(`D${sIdx}`).label }}</span>
+                  <span
+                    :class="[
+                      getStickerDisplay(`D${sIdx}`).isDuplicate
+                        ? 'underline decoration-red-500 decoration-[2.5px] underline-offset-[3px] font-black'
+                        : '',
+                    ]"
+                  >
+                    {{ getStickerDisplay(`D${sIdx}`).label }}
+                  </span>
                 </template>
                 <span class="text-[8px] opacity-70 font-sans">D{{ sIdx }}</span>
               </button>
@@ -502,7 +598,7 @@ function getFaceColor(stickerId: string) {
             <AppIcon
               name="lucide:anchor"
               :size="18"
-              :class-name="selectedSticker.bufferType === 'corner' ? 'text-purple-400' : 'text-indigo-400'"
+              :class-name="selectedSticker.bufferType === 'corner' ? 'text-purple-400' : 'text-green-400'"
             />
             <span class="font-bold text-sm text-slate-100">
               Pieza Buffer de {{ selectedSticker.bufferType === 'corner' ? 'Esquinas' : 'Aristas' }}
@@ -553,7 +649,6 @@ function getFaceColor(stickerId: string) {
         <template v-else>
           <form class="flex flex-col gap-4" @submit.prevent="saveStickerLetter">
             <AppInput
-              ref="letterInputRef"
               v-model="editLetterInput"
               label="Letra Asignada"
               placeholder="Ej: A, B, C, CH..."
@@ -561,6 +656,18 @@ function getFaceColor(stickerId: string) {
               autofocus
               @enter="saveStickerLetter"
             />
+
+            <!-- Alerta visual si la letra escrita ya existe en otra pieza del mismo tipo -->
+            <p
+              v-if="duplicateConflictInEdit.length > 0"
+              class="text-xs text-red-400 flex items-center gap-1.5 font-medium bg-red-950/30 border border-red-500/25 px-2.5 py-1.5 rounded-lg -mt-2"
+            >
+              <AppIcon name="lucide:alert-circle" :size="14" class-name="shrink-0 text-red-400" />
+              <span>
+                Esta letra ya está asignada en {{ selectedSticker.type === 'corner' ? 'la esquina' : 'la arista' }}
+                <strong>{{ duplicateConflictInEdit.join(', ') }}</strong> (alerta visual).
+              </span>
+            </p>
 
             <!-- Asignar como buffer -->
             <div v-if="selectedSticker.type === 'corner' || selectedSticker.type === 'edge'" class="flex flex-col gap-2 pt-2 border-t border-dark-800">
@@ -599,16 +706,17 @@ function getFaceColor(stickerId: string) {
 
       <!-- Solo mostrar footer de acciones si es un sticker editable (no buffer) -->
       <template v-if="!selectedSticker?.isBuffer" #footer>
-        <AppButton variant="ghost" size="md" @click="showStickerModal = false">
+        <AppButton variant="ghost" size="md" :disabled="isSaving" @click="showStickerModal = false">
           Cancelar
         </AppButton>
         <AppButton
           variant="primary"
           size="md"
-          icon="lucide:check"
+          :icon="isSaving ? 'lucide:loader-2' : 'lucide:check'"
+          :disabled="isSaving"
           @click="saveStickerLetter"
         >
-          Guardar Letra
+          {{ isSaving ? 'Guardando...' : 'Guardar Letra' }}
         </AppButton>
       </template>
     </AppModal>

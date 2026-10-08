@@ -269,3 +269,75 @@ export const DEFAULT_SCHEME_3X3: LetterSchemeConfig = cleanSchemeBufferLetters({
     edge: 'U7',   // UF
   },
 })
+
+/**
+ * Detecta letras repetidas dentro del mismo tipo de pieza (esquinas con esquinas, aristas con aristas).
+ * En 3BLD, esquinas y aristas son piscinas de objetivos independientes que comparten abecedario.
+ * Retorna un Map de stickerId -> lista de otros stickerIds que tienen la misma letra.
+ */
+export function getSchemeDuplicateStickers(scheme: LetterSchemeConfig): Map<string, string[]> {
+  const result = new Map<string, string[]>()
+  if (!scheme || !scheme.stickers) return result
+
+  const gridSize = scheme.gridSize || 3
+  const groupMap = new Map<string, string[]>()
+
+  for (const [id, rawLetter] of Object.entries(scheme.stickers)) {
+    const letter = (rawLetter || '').trim().toUpperCase()
+    if (!letter) continue
+
+    const bufferInfo = getBufferStickerInfo(scheme, id)
+    if (bufferInfo.isBuffer) continue
+
+    const pType = pieceTypeOf(id, gridSize)
+    if (pType !== 'corner' && pType !== 'edge') continue
+
+    const key = `${pType}:${letter}`
+    const list = groupMap.get(key) || []
+    list.push(id)
+    groupMap.set(key, list)
+  }
+
+  for (const [, ids] of groupMap) {
+    if (ids.length > 1) {
+      for (const id of ids) {
+        result.set(id, ids.filter(other => other !== id))
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Busca si la letra que se quiere asignar a un sticker ya está en uso por otro sticker
+ * del mismo tipo de pieza (esquina o arista). Retorna la lista de stickers conflictivos.
+ */
+export function findStickerLetterConflicts(
+  scheme: LetterSchemeConfig,
+  stickerId: string,
+  letter: string,
+): string[] {
+  const norm = (letter || '').trim().toUpperCase()
+  if (!norm) return []
+
+  const gridSize = scheme.gridSize || 3
+  const pType = pieceTypeOf(stickerId, gridSize)
+  if (pType !== 'corner' && pType !== 'edge') return []
+
+  const conflicts: string[] = []
+  for (const [id, rawLetter] of Object.entries(scheme.stickers)) {
+    if (id === stickerId) continue
+    if ((rawLetter || '').trim().toUpperCase() !== norm) continue
+
+    const bufferInfo = getBufferStickerInfo(scheme, id)
+    if (bufferInfo.isBuffer) continue
+
+    if (pieceTypeOf(id, gridSize) === pType) {
+      conflicts.push(id)
+    }
+  }
+
+  return conflicts
+}
+

@@ -2,7 +2,9 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   FACE_COLORS,
+  pieceTypeOf,
   getBufferStickerInfo,
+  getSchemeDuplicateStickers,
   type CubeFace,
   type LetterSchemeConfig,
 } from '@/models/cube'
@@ -63,9 +65,15 @@ function getStickerIndex(face: CubeFace, col: number, row: number): number {
   return r * 3 + c
 }
 
+const duplicateStickersMap = computed(() => {
+  return getSchemeDuplicateStickers(props.scheme)
+})
+
 function getStickerDisplay(id: string) {
   const bufferInfo = getBufferStickerInfo(props.scheme, id)
   const letter = props.scheme.stickers[id] || ''
+  const isDupe = duplicateStickersMap.value.has(id)
+  const conflictIds = duplicateStickersMap.value.get(id) || []
 
   if (bufferInfo.isBuffer) {
     const isCorner = bufferInfo.pieceType === 'corner'
@@ -74,18 +82,27 @@ function getStickerDisplay(id: string) {
       pieceType: bufferInfo.pieceType,
       isPrimary: bufferInfo.isPrimary,
       label: bufferInfo.isPrimary ? 'BUF' : '',
+      isDuplicate: false,
+      duplicateTitle: '',
       classes: isCorner
         ? 'ring-2 ring-purple-400 border-purple-300 shadow-lg shadow-purple-900/40'
-        : 'ring-2 ring-indigo-400 border-indigo-300 shadow-lg shadow-indigo-900/40',
-      badgeClass: isCorner ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white',
+        : 'ring-2 ring-green-400 border-green-300 shadow-lg shadow-green-900/40',
+      badgeClass: isCorner ? 'bg-purple-600 text-white' : 'bg-green-600 text-white',
     }
   }
 
+  const pType = pieceTypeOf(id, props.scheme.gridSize || 3)
+  const pLabel = pType === 'corner' ? 'esquinas' : 'aristas'
+
   return {
     isBuffer: false,
-    pieceType: null,
+    pieceType: pType,
     isPrimary: false,
     label: letter,
+    isDuplicate: isDupe,
+    duplicateTitle: isDupe
+      ? `Letra repetida en ${pLabel}: también asignada en ${conflictIds.join(', ')}`
+      : '',
     classes: 'border-black/30 hover:ring-2 hover:ring-white/60',
     badgeClass: '',
   }
@@ -319,7 +336,7 @@ const cubeTransformStyle = computed(() => {
             :class="[
               'px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0',
               p.label === '3D'
-                ? 'bg-dark-800 text-indigo-300 hover:text-white hover:bg-dark-700'
+                ? 'bg-dark-800 text-green-300 hover:text-white hover:bg-dark-700'
                 : 'text-slate-300 hover:text-white hover:bg-dark-800',
             ]"
             :title="p.title"
@@ -341,7 +358,7 @@ const cubeTransformStyle = computed(() => {
             type="button"
             :class="[
               'p-1.5 rounded-lg text-xs transition-colors',
-              autoSpin ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white',
+              autoSpin ? 'bg-green-600 text-white' : 'text-slate-400 hover:text-white',
             ]"
             title="Auto-rotación suave"
             @click="toggleAutoSpin"
@@ -391,7 +408,7 @@ const cubeTransformStyle = computed(() => {
             :class="[
               'p-1.5 rounded-lg text-xs transition-colors',
               isFullscreen
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-green-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white',
             ]"
             :title="isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'"
@@ -416,7 +433,7 @@ const cubeTransformStyle = computed(() => {
       >
         <!-- Guía de ayuda en la esquina inferior izquierda -->
         <div class="absolute bottom-3 left-3 flex items-center gap-1.5 text-[11px] text-slate-400 bg-dark-950/85 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-dark-800/80 pointer-events-none z-20">
-          <AppIcon name="lucide:move" :size="13" class-name="text-indigo-400 animate-pulse" />
+          <AppIcon name="lucide:move" :size="13" class-name="text-green-400 animate-pulse" />
           <span>Arrastra para rotar • Toca un sticker para editar</span>
           <span v-if="isFullscreen" class="hidden sm:inline opacity-70 ml-1">• Presiona Esc para salir</span>
         </div>
@@ -458,6 +475,7 @@ const cubeTransformStyle = computed(() => {
                       backgroundColor: FACE_COLORS[fc.face].bg,
                       color: FACE_COLORS[fc.face].text,
                     }"
+                    :title="getStickerDisplay(`${fc.face}${getStickerIndex(fc.face, c - 1, r - 1)}`).duplicateTitle || undefined"
                     @pointerdown="onStickerPointerDown($event, fc.face, getStickerIndex(fc.face, c - 1, r - 1))"
                     @click="onStickerClick(fc.face, getStickerIndex(fc.face, c - 1, r - 1))"
                   >
@@ -472,7 +490,16 @@ const cubeTransformStyle = computed(() => {
                     </template>
                     <!-- Letra asignada -->
                     <template v-else>
-                      <span class="text-base sm:text-lg font-black font-mono leading-none tracking-tight drop-shadow-xs pointer-events-none">
+                      <span
+                        :class="[
+                          'text-base sm:text-lg font-black font-mono leading-none tracking-tight drop-shadow-xs pointer-events-none',
+                          getStickerDisplay(`${fc.face}${getStickerIndex(fc.face, c - 1, r - 1)}`).isDuplicate
+                            ? (fc.face === 'R'
+                                ? 'underline decoration-red-300 decoration-[2.5px] underline-offset-[3px]'
+                                : 'underline decoration-red-500 decoration-[2.5px] underline-offset-[3px]')
+                            : '',
+                        ]"
+                      >
                         {{ getStickerDisplay(`${fc.face}${getStickerIndex(fc.face, c - 1, r - 1)}`).label }}
                       </span>
                     </template>
