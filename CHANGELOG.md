@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.4.0] - 2026-10-08
+- 🚀 feat(version): inyectar version de compilacion en vite y manifest pwa
+
 ## [0.3.0] - 2026-10-08
 - 🚀 feat(legal): añadir paginas de privacidad y terminos para google oauth
 
