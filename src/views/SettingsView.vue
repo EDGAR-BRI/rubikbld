@@ -17,10 +17,12 @@ import {
   showPwaInstallInstructions,
 } from '@/utils/alerts'
 import { usePwaInstall } from '@/composables/usePwaInstall'
+import { useNetwork } from '@vueuse/core'
 import { APP_VERSION } from '@/config/version'
 
 const settingsStore = useSettingsStore()
 const { isInstalled, isIOS, promptInstall } = usePwaInstall()
+const { isOnline } = useNetwork()
 
 const showGestureModal = ref(false)
 
@@ -68,6 +70,26 @@ async function handleSignOutGoogle() {
 
   await settingsStore.signOutFromGoogle()
   showInfoToast('Sesión cerrada', 'Se ha desconectado tu cuenta de Google')
+}
+
+async function handleToggleTilt(val: boolean) {
+  if (val && typeof (DeviceOrientationEvent as any)?.requestPermission === 'function') {
+    try {
+      const res = await (DeviceOrientationEvent as any).requestPermission()
+      if (res !== 'granted') {
+        showErrorToast('Permiso denegado', 'iOS Safari requiere permiso para acceder al giroscopio')
+        settingsStore.setEnableTiltGestures(false)
+        return
+      }
+    } catch (err: any) {
+      showErrorToast('Error de sensor', err?.message || 'No se pudo acceder al giroscopio')
+    }
+  }
+  await settingsStore.setEnableTiltGestures(val)
+  showSuccessToast(
+    val ? 'Control por inclinación activado' : 'Control por inclinación desactivado',
+    val ? 'Inclina el móvil a los lados para calificar manos libres' : 'Usa gestos de deslizamiento o botones para calificar',
+  )
 }
 
 function formatDate(timestamp: number | null): string {
@@ -195,7 +217,7 @@ function openGithubUrl(url: string) {
           <button
             type="button"
             class="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-white text-slate-900 font-semibold text-sm hover:bg-slate-100 active:scale-[0.98] transition-all shadow-md group disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-            :disabled="settingsStore.syncStatus.isSyncing"
+            :disabled="!isOnline || settingsStore.syncStatus.isSyncing"
             @click="handleSignInGoogle"
           >
             <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -204,7 +226,7 @@ function openGithubUrl(url: string) {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span>Continuar con Google</span>
+            <span>{{ isOnline ? 'Continuar con Google' : 'Conexión a internet requerida' }}</span>
           </button>
 
           <!-- Enlaces de consentimiento OAuth -->
@@ -271,7 +293,16 @@ function openGithubUrl(url: string) {
                   <p class="text-sm font-bold text-white truncate">
                     {{ settingsStore.syncStatus.user?.name }}
                   </p>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                  <span
+                    v-if="!isOnline"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0"
+                  >
+                    Conectado (Sin red)
+                  </span>
+                  <span
+                    v-else
+                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0"
+                  >
                     Conectado
                   </span>
                 </div>
@@ -292,6 +323,27 @@ function openGithubUrl(url: string) {
             </button>
           </div>
 
+          <!-- Selector de Modo de Sincronización: Automático vs Manual -->
+          <div class="p-3.5 bg-dark-950/80 rounded-2xl border border-dark-800 flex flex-col gap-2">
+            <AppSwitch
+              v-model="settingsStore.autoSyncDrive"
+              label="Sincronización automática"
+              description="Respaldar tus cambios en Google Drive al volver a tener conexión"
+              @change="(val: boolean) => {
+                settingsStore.setAutoSyncDrive(val)
+                showSuccessToast(
+                  val ? 'Sincronización automática activada' : 'Modo manual activado',
+                  val ? 'Tus datos se respaldarán automáticamente al recuperar conexión' : 'Solo se respaldará cuando pulses «Exportar a Drive»',
+                )
+              }"
+            />
+            <p class="text-[11px] text-slate-400 pl-0.5">
+              {{ settingsStore.autoSyncDrive
+                ? '⚡ Automático: Tus tarjetas y repasos se respaldan en segundo plano al recuperar internet.'
+                : '🔒 Manual: Sin subidas en segundo plano. Solo se respalda cuando pulses «Exportar a Drive».' }}
+            </p>
+          </div>
+
           <!-- Botones de Google Drive (Exportar / Importar) -->
           <div class="grid grid-cols-2 gap-2">
             <AppButton
@@ -299,6 +351,7 @@ function openGithubUrl(url: string) {
               size="md"
               icon="lucide:cloud-upload"
               :loading="settingsStore.syncStatus.isSyncing"
+              :disabled="!isOnline || settingsStore.syncStatus.isSyncing"
               @click="handleExportToDrive"
             >
               Exportar a Drive
@@ -308,11 +361,20 @@ function openGithubUrl(url: string) {
               variant="secondary"
               size="md"
               icon="lucide:cloud-download"
-              :disabled="settingsStore.syncStatus.isSyncing"
+              :disabled="!isOnline || settingsStore.syncStatus.isSyncing"
               @click="handleImportFromDrive"
             >
               Importar de Drive
             </AppButton>
+          </div>
+
+          <!-- Aviso cuando está sin conexión -->
+          <div
+            v-if="!isOnline"
+            class="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 flex items-center gap-2"
+          >
+            <AppIcon name="lucide:wifi-off" :size="13" class-name="shrink-0 text-amber-400" />
+            <span>Sin conexión. La sincronización se reanudará en cuanto recuperes la conexión.</span>
           </div>
 
           <!-- Info última exportación -->
@@ -519,6 +581,132 @@ function openGithubUrl(url: string) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 2.2: Control por Inclinación (Giroscopio / Manos Libres) -->
+      <div class="bg-dark-900 border border-dark-800 rounded-3xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <AppIcon name="lucide:smartphone" :size="20" />
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-white">Inclinación del Móvil</h2>
+              <p class="text-xs text-slate-400">Giroscopio manos libres para BLD</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl transition-colors"
+            @click="showGestureModal = true"
+          >
+            <AppIcon name="lucide:help-circle" :size="13" />
+            <span>Guía</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <!-- Toggle Inclinación -->
+          <AppSwitch
+            v-model="settingsStore.enableTiltGestures"
+            label="Control por inclinación"
+            description="Califica inclinando el teléfono hacia los lados. Ideal para sostener el cubo con una mano."
+            @change="handleToggleTilt"
+          />
+
+          <!-- Opciones de inclinación cuando está activo -->
+          <template v-if="settingsStore.enableTiltGestures">
+            <!-- Selector de Sensibilidad de inclinación -->
+            <div class="pt-3 border-t border-dark-800">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-slate-200">Sensibilidad de inclinación</span>
+                <span class="text-xs font-mono text-slate-400">
+                  {{ settingsStore.tiltSensitivity === 'high' ? 'Sensible (15°)' : settingsStore.tiltSensitivity === 'low' ? 'Firme (30°)' : 'Normal (22°)' }}
+                </span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  :class="[
+                    'py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center',
+                    settingsStore.tiltSensitivity === 'high'
+                      ? 'bg-sky-600 text-white border-sky-500 shadow-md shadow-sky-600/20'
+                      : 'bg-dark-950 text-slate-400 border-dark-800 hover:text-white',
+                  ]"
+                  @click="settingsStore.setTiltSensitivity('high')"
+                >
+                  Sensible
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center',
+                    settingsStore.tiltSensitivity === 'normal'
+                      ? 'bg-green-600 text-white border-green-500 shadow-md shadow-green-600/20'
+                      : 'bg-dark-950 text-slate-400 border-dark-800 hover:text-white',
+                  ]"
+                  @click="settingsStore.setTiltSensitivity('normal')"
+                >
+                  Normal
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center',
+                    settingsStore.tiltSensitivity === 'low'
+                      ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/20'
+                      : 'bg-dark-950 text-slate-400 border-dark-800 hover:text-white',
+                  ]"
+                  @click="settingsStore.setTiltSensitivity('low')"
+                >
+                  Firme
+                </button>
+              </div>
+            </div>
+
+            <!-- Cheat sheet de direcciones de inclinación -->
+            <div class="pt-3 border-t border-dark-800 grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40 flex items-center gap-2">
+                <span class="font-bold text-emerald-400 text-sm">📲→</span>
+                <div>
+                  <p class="font-bold text-emerald-300">Inclinar Derecha</p>
+                  <p class="text-[10px] text-slate-400">Bien</p>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-rose-950/30 border border-rose-800/40 flex items-center gap-2">
+                <span class="font-bold text-rose-400 text-sm">←📲</span>
+                <div>
+                  <p class="font-bold text-rose-300">Inclinar Izquierda</p>
+                  <p class="text-[10px] text-slate-400">Otra vez</p>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-sky-950/30 border border-sky-800/40 flex items-center gap-2">
+                <span class="font-bold text-sky-400 text-sm">⬆️📲</span>
+                <div>
+                  <p class="font-bold text-sky-300">Inclinar Adelante</p>
+                  <p class="text-[10px] text-slate-400">Fácil</p>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-amber-950/30 border border-amber-800/40 flex items-center gap-2">
+                <span class="font-bold text-amber-400 text-sm">⬇️📲</span>
+                <div>
+                  <p class="font-bold text-amber-300">Inclinar Hacia Ti</p>
+                  <p class="text-[10px] text-slate-400">Difícil</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3 bg-dark-950/80 rounded-2xl border border-dark-800 text-[11px] text-slate-400 flex items-start gap-2">
+              <AppIcon name="lucide:info" :size="15" class="text-emerald-400 shrink-0 mt-0.5" />
+              <span>
+                El sensor calibra automáticamente tu posición de descanso con cada tarjeta. Mantén la inclinación una fracción de segundo (~0.2s) para confirmar la calificación con vibración háptica.
+              </span>
+            </div>
+          </template>
         </div>
       </div>
         </div>

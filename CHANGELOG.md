@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.12.0] - 2026-10-09
+- 🚀 feat(study): optimizar rendimiento en movil, control por inclinacion y evitar fuga de imagen
+
 ## [0.11.0] - 2026-10-09
 - 🚀 feat(srs): anadir archivado de tarjetas y sincronizacion drive offline
 

@@ -45,7 +45,10 @@ function onKeyDown(e: KeyboardEvent) {
 
 onMounted(async () => {
   window.addEventListener('keydown', onKeyDown)
-  await reviewStore.loadReviewSession()
+  await Promise.all([
+    settingsStore.loadSettings(),
+    reviewStore.loadReviewSession(),
+  ])
 })
 
 onUnmounted(() => {
@@ -136,13 +139,18 @@ async function onRefreshSession() {
       <div class="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
-          class="text-xs text-sky-400 hover:text-sky-300 flex items-center justify-center gap-1 font-medium p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20 active:scale-95 transition-all"
-          title="Ver gestos táctiles"
-          aria-label="Ver gestos táctiles"
+          :class="[
+            'text-xs flex items-center justify-center gap-1 font-medium p-1.5 sm:px-2.5 sm:py-1 rounded-xl active:scale-95 transition-all',
+            settingsStore.enableTiltGestures
+              ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20'
+              : 'text-sky-400 bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20',
+          ]"
+          :title="settingsStore.enableTiltGestures ? 'Inclinación de móvil activa (Clic para ver guía)' : 'Ver gestos de tarjetas'"
+          :aria-label="settingsStore.enableTiltGestures ? 'Inclinación de móvil activa' : 'Ver gestos de tarjetas'"
           @click="showGestureHelp = true"
         >
-          <AppIcon name="lucide:hand" :size="15" />
-          <span class="hidden sm:inline">Gestos</span>
+          <AppIcon :name="settingsStore.enableTiltGestures ? 'lucide:smartphone' : 'lucide:hand'" :size="15" />
+          <span class="hidden sm:inline">{{ settingsStore.enableTiltGestures ? 'Inclinación' : 'Gestos' }}</span>
         </button>
 
         <button
@@ -168,19 +176,24 @@ async function onRefreshSession() {
       <!-- CASO 1: Sesión en Curso -->
       <template v-else-if="hasCards">
         <div class="flex-1 flex items-center justify-center py-2">
-          <FlashCard
-            :pair="reviewStore.currentPair!"
-            :card="reviewStore.currentCard!"
-            :is-flipped="reviewStore.isFlipped"
-            :reverse-mode="settingsStore.reversePractice"
-            :enable-gestures="settingsStore.enableCardGestures"
-            :allow-swipe-before-flip="settingsStore.allowSwipeBeforeFlip"
-            :sensitivity="settingsStore.gestureSensitivity"
-            :intervals="reviewStore.buttonIntervals"
-            @flip="reviewStore.flip"
-            @edit="onOpenEdit"
-            @rate="reviewStore.rate"
-          />
+          <Transition name="card-switch" mode="out-in">
+            <FlashCard
+              :key="reviewStore.currentCard!.id"
+              :pair="reviewStore.currentPair!"
+              :card="reviewStore.currentCard!"
+              :is-flipped="reviewStore.isFlipped"
+              :reverse-mode="settingsStore.reversePractice"
+              :enable-gestures="settingsStore.enableCardGestures"
+              :allow-swipe-before-flip="settingsStore.allowSwipeBeforeFlip"
+              :sensitivity="settingsStore.gestureSensitivity"
+              :enable-tilt="settingsStore.enableTiltGestures"
+              :tilt-sensitivity="settingsStore.tiltSensitivity"
+              :intervals="reviewStore.buttonIntervals"
+              @flip="reviewStore.flip"
+              @edit="onOpenEdit"
+              @rate="reviewStore.rate"
+            />
+          </Transition>
         </div>
 
         <!-- Controles de la parte inferior (Solo visibles al voltear la tarjeta) -->
@@ -276,3 +289,20 @@ async function onRefreshSession() {
     />
   </div>
 </template>
+
+<style scoped>
+.card-switch-enter-active {
+  transition: opacity 0.15s ease-out, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-switch-leave-active {
+  transition: opacity 0.1s ease-in, transform 0.1s ease-in;
+}
+.card-switch-enter-from {
+  opacity: 0;
+  transform: scale(0.96) translate3d(0, 6px, 0);
+}
+.card-switch-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translate3d(0, -6px, 0);
+}
+</style>

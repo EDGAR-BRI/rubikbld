@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import type { PairItem } from '@/models/pair'
 import type { SRSCard, ReviewRating } from '@/models/card'
 import AppBadge from '@/components/ui/AppBadge.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import { useDeviceTilt, type TiltDirection } from '@/composables/useDeviceTilt'
 
 const props = withDefaults(
   defineProps<{
@@ -14,6 +15,8 @@ const props = withDefaults(
     enableGestures?: boolean
     allowSwipeBeforeFlip?: boolean
     sensitivity?: 'normal' | 'high' | 'low'
+    enableTilt?: boolean
+    tiltSensitivity?: 'normal' | 'high' | 'low'
     intervals?: {
       1: string
       2: string
@@ -26,6 +29,8 @@ const props = withDefaults(
     enableGestures: true,
     allowSwipeBeforeFlip: true,
     sensitivity: 'normal',
+    enableTilt: false,
+    tiltSensitivity: 'normal',
     intervals: () => ({
       1: '1m',
       2: '1m',
@@ -41,8 +46,22 @@ const emit = defineEmits<{
   (e: 'rate', rating: ReviewRating): void
 }>()
 
-// Contenedor principal de la tarjeta para interacción táctil/ratón
+// Contenedor principal de la tarjeta
 const cardContainerRef = ref<HTMLElement | null>(null)
+
+// Candado de seguridad para el reverso: NO renderizar la foto/palabra en el DOM
+// hasta que el usuario efectivamente voltee la tarjeta por primera vez.
+// Esto evita 100% que en móviles lentos se filtre la imagen durante transiciones.
+const hasFlippedOnce = ref(props.isFlipped)
+watch(
+  () => props.isFlipped,
+  (val) => {
+    if (val) {
+      hasFlippedOnce.value = true
+    }
+  },
+  { immediate: true },
+)
 
 // Estados de arrastre / swipe
 const isDragging = ref(false)
@@ -55,29 +74,101 @@ const hasPassedThreshold = ref(false)
 let pointerId: number | null = null
 let startX = 0
 let startY = 0
+let lastPointerX = 0
+let lastPointerY = 0
 let hasMoved = false
+let rafId: number | null = null
 
-// Umbral en píxeles según sensibilidad
+// Umbral en píxeles según sensibilidad de deslizamiento
 const threshold = computed(() => {
   if (props.sensitivity === 'high') return 55
   if (props.sensitivity === 'low') return 95
   return 75
 })
 
-// Distancia total recorrida
+// Distancia total recorrida por arrastre táctil
 const dragDistance = computed(() => Math.hypot(dragX.value, dragY.value))
 
-// Dirección dominante actual
-const activeDirection = computed<'right' | 'left' | 'up' | 'down' | null>(() => {
-  if (dragDistance.value < 10) return null
-  const absX = Math.abs(dragX.value)
-  const absY = Math.abs(dragY.value)
+// Integración del sensor de inclinación (Giroscopio)
+const tilt = useDeviceTilt({
+  enabled: () => !!props.enableTilt && !isDragging.value,
+  sensitivity: () => props.tiltSensitivity ?? 'normal',
+  holdDurationMs: 220,
+  onTrigger: (direction) => {
+    handleTiltTrigger(direction)
+  },
+})
 
-  if (absX >= absY) {
-    return dragX.value > 0 ? 'right' : 'left'
-  } else {
-    return dragY.value < 0 ? 'up' : 'down'
+// Recalibrar posición neutra al cambiar de tarjeta
+watch(
+  () => props.card.id,
+  () => {
+    hasFlippedOnce.value = props.isFlipped
+    tilt.calibrate()
+    tilt.lockUntilNeutral(400)
+  },
+)
+
+function triggerCardExit(rating: ReviewRating, direction: 'right' | 'left' | 'up' | 'down') {
+  if (isExiting.value) return
+  exitDirection.value = direction
+  isExiting.value = true
+
+  if (navigator?.vibrate) {
+    try {
+      navigator.vibrate(30)
+    } catch {}
   }
+
+  // CRUCIAL: Esperar a que la tarjeta actual vuele fuera de pantalla (180ms)
+  // ANTES de avisar al store. De esta forma, la siguiente tarjeta NUNCA se muestra
+  // mientras la anterior sale, evitando que se vea la foto por unos milisegundos.
+  setTimeout(() => {
+    emit('rate', rating)
+    isExiting.value = false
+    exitDirection.value = null
+    dragX.value = 0
+    dragY.value = 0
+    isDragging.value = false
+    hasPassedThreshold.value = false
+  }, 190)
+}
+
+function handleTiltTrigger(direction: TiltDirection) {
+  if (isDragging.value || isExiting.value) return
+  if (!props.isFlipped && !props.allowSwipeBeforeFlip) return
+
+  const ratingMap: Record<TiltDirection, ReviewRating> = {
+    right: 3,
+    left: 1,
+    up: 4,
+    down: 2,
+  }
+  const rating = ratingMap[direction]
+  triggerCardExit(rating, direction)
+}
+
+// Dirección dominante actual (Soporta arrastre táctil o inclinación del dispositivo)
+const activeDirection = computed<'right' | 'left' | 'up' | 'down' | null>(() => {
+  if (isDragging.value) {
+    if (dragDistance.value < 10) return null
+    const absX = Math.abs(dragX.value)
+    const absY = Math.abs(dragY.value)
+
+    if (absX >= absY) {
+      return dragX.value > 0 ? 'right' : 'left'
+    } else {
+      return dragY.value < 0 ? 'up' : 'down'
+    }
+  }
+
+  // Si no se arrastra con el dedo, verificar inclinación activa
+  if (props.enableTilt && !tilt.isLocked.value && tilt.progress.value >= 0.25) {
+    if (!props.isFlipped && !props.allowSwipeBeforeFlip) return null
+    return tilt.activeDirection.value
+  }
+
+  return null
 })
 
 // Objeto con la información de la acción activa (estilo Gmail)
@@ -93,8 +184,8 @@ const activeAction = computed(() => {
         interval: props.intervals[3] || '10m',
         icon: 'lucide:check-circle-2',
         color: 'emerald',
-        bgPill: 'bg-emerald-500/25 border-emerald-500/70 text-emerald-300',
-        glowRing: 'ring-2 ring-emerald-500 shadow-emerald-500/30',
+        bgPill: 'bg-emerald-950/95 border-emerald-500/80 text-emerald-300',
+        glowRing: 'ring-2 ring-emerald-500',
         badgeColor: 'text-emerald-400',
       }
     case 'left':
@@ -105,8 +196,8 @@ const activeAction = computed(() => {
         interval: props.intervals[1] || '1m',
         icon: 'lucide:rotate-ccw',
         color: 'rose',
-        bgPill: 'bg-rose-500/25 border-rose-500/70 text-rose-300',
-        glowRing: 'ring-2 ring-rose-500 shadow-rose-500/30',
+        bgPill: 'bg-rose-950/95 border-rose-500/80 text-rose-300',
+        glowRing: 'ring-2 ring-rose-500',
         badgeColor: 'text-rose-400',
       }
     case 'up':
@@ -117,8 +208,8 @@ const activeAction = computed(() => {
         interval: props.intervals[4] || '4d',
         icon: 'lucide:zap',
         color: 'sky',
-        bgPill: 'bg-sky-500/25 border-sky-500/70 text-sky-300',
-        glowRing: 'ring-2 ring-sky-500 shadow-sky-500/30',
+        bgPill: 'bg-sky-950/95 border-sky-500/80 text-sky-300',
+        glowRing: 'ring-2 ring-sky-500',
         badgeColor: 'text-sky-400',
       }
     case 'down':
@@ -129,19 +220,64 @@ const activeAction = computed(() => {
         interval: props.intervals[2] || '1m',
         icon: 'lucide:flame',
         color: 'amber',
-        bgPill: 'bg-amber-500/25 border-amber-500/70 text-amber-300',
-        glowRing: 'ring-2 ring-amber-500 shadow-amber-500/30',
+        bgPill: 'bg-amber-950/95 border-amber-500/80 text-amber-300',
+        glowRing: 'ring-2 ring-amber-500',
         badgeColor: 'text-amber-400',
       }
   }
 })
 
-// Porcentaje de avance hacia el umbral
-const gestureProgress = computed(() => {
-  return Math.min(dragDistance.value / threshold.value, 1.3)
+// ¿Hay una acción de arrastre o inclinación activa?
+const isActionInProgress = computed(() => {
+  if (isDragging.value) return true
+  if (props.enableTilt && !tilt.isLocked.value && tilt.progress.value >= 0.25) {
+    if (!props.isFlipped && !props.allowSwipeBeforeFlip) return false
+    return true
+  }
+  return false
 })
 
-// Estilo de transformación reactivo de la tarjeta
+// ¿Ha superado el umbral para confirmar?
+const isActionConfirmed = computed(() => {
+  if (isDragging.value) return hasPassedThreshold.value
+  if (props.enableTilt) return tilt.isPastThreshold.value
+  return false
+})
+
+// Porcentaje de avance hacia el umbral
+const gestureProgress = computed(() => {
+  if (isDragging.value) {
+    return Math.min(dragDistance.value / threshold.value, 1.25)
+  }
+  if (props.enableTilt) {
+    return tilt.progress.value
+  }
+  return 0
+})
+
+// Texto de ayuda dinámico según el modo (arrastre o inclinación)
+const helperText = computed(() => {
+  if (isDragging.value) {
+    return hasPassedThreshold.value ? '¡Suelta para calificar!' : 'Desliza más para confirmar...'
+  }
+  if (props.enableTilt) {
+    return tilt.isPastThreshold.value ? '¡Mantén la inclinación!' : 'Inclina un poco más...'
+  }
+  return ''
+})
+
+// Offset visual dinámico cuando se inclina el móvil
+const tiltVisualX = computed(() => {
+  if (!props.enableTilt || isDragging.value || isExiting.value) return 0
+  return Math.max(Math.min(tilt.deltaX.value * 3.5, 75), -75)
+})
+
+const tiltVisualY = computed(() => {
+  if (!props.enableTilt || isDragging.value || isExiting.value) return 0
+  return Math.max(Math.min(tilt.deltaY.value * 2.8, 65), -65)
+})
+
+// Estilo de transformación reactivo y ligero (aceleración GPU con translate3d)
 const cardTransformStyle = computed(() => {
   if (isExiting.value && exitDirection.value) {
     let exitX = 0
@@ -149,85 +285,104 @@ const cardTransformStyle = computed(() => {
     let exitRotate = 0
 
     if (exitDirection.value === 'right') {
-      exitX = 600
-      exitRotate = 20
+      exitX = 520
+      exitRotate = 16
     } else if (exitDirection.value === 'left') {
-      exitX = -600
-      exitRotate = -20
+      exitX = -520
+      exitRotate = -16
     } else if (exitDirection.value === 'up') {
-      exitY = -600
+      exitY = -520
       exitRotate = 0
     } else if (exitDirection.value === 'down') {
-      exitY = 600
+      exitY = 520
       exitRotate = 0
     }
 
     return {
-      transform: `translate3d(${exitX}px, ${exitY}px, 0) rotate(${exitRotate}deg) scale(0.85)`,
+      transform: `translate3d(${exitX}px, ${exitY}px, 0) rotate(${exitRotate}deg) scale(0.9)`,
       opacity: '0',
-      transition: 'transform 0.22s ease-out, opacity 0.22s ease-out',
+      transition: 'transform 0.18s ease-out, opacity 0.18s ease-out',
+      willChange: 'transform, opacity',
     }
   }
 
   if (isDragging.value) {
-    // Rotación sutil y tangible al arrastrar horizontalmente
-    const rotation = (dragX.value / 18)
+    const rotation = dragX.value * 0.04
     return {
       transform: `translate3d(${dragX.value}px, ${dragY.value}px, 0) rotate(${rotation}deg)`,
       transition: 'none',
+      willChange: 'transform',
+    }
+  }
+
+  if (props.enableTilt && (tiltVisualX.value !== 0 || tiltVisualY.value !== 0)) {
+    const rotation = tiltVisualX.value * 0.08
+    return {
+      transform: `translate3d(${tiltVisualX.value}px, ${tiltVisualY.value}px, 0) rotate(${rotation}deg)`,
+      transition: 'transform 0.08s ease-out',
+      willChange: 'transform',
     }
   }
 
   return {
     transform: 'translate3d(0, 0, 0) rotate(0deg)',
-    transition: 'transform 0.32s cubic-bezier(0.18, 0.89, 0.32, 1.15)',
+    transition: 'transform 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.15)',
+    willChange: 'auto',
   }
 })
 
-// Manejo de eventos Pointer (Tactil + Ratón)
+// Manejo de eventos Pointer con rAF para alto rendimiento en móviles gama de entrada
 function onPointerDown(e: PointerEvent) {
   if (!props.enableGestures) return
-  // Si se hace clic en botones interactivos (como el lápiz de edición), no arrastrar
   const target = e.target as HTMLElement | null
   if (target?.closest('button, a, input, select, textarea')) return
 
   pointerId = e.pointerId
   startX = e.clientX
   startY = e.clientY
+  lastPointerX = e.clientX
+  lastPointerY = e.clientY
   hasMoved = false
   isDragging.value = false
   hasPassedThreshold.value = false
 
   try {
     cardContainerRef.value?.setPointerCapture(e.pointerId)
-  } catch {
-    // Si el navegador no soporta setPointerCapture en este contexto, continuar
-  }
+  } catch {}
 }
 
 function onPointerMove(e: PointerEvent) {
   if (pointerId === null || pointerId !== e.pointerId) return
+  lastPointerX = e.clientX
+  lastPointerY = e.clientY
 
-  const dx = e.clientX - startX
-  const dy = e.clientY - startY
+  // Throttle con requestAnimationFrame para mantener 60fps sin saturar la CPU
+  if (!rafId) {
+    rafId = requestAnimationFrame(processDragMove)
+  }
+}
+
+function processDragMove() {
+  rafId = null
+  if (pointerId === null) return
+
+  const dx = lastPointerX - startX
+  const dy = lastPointerY - startY
   const dist = Math.hypot(dx, dy)
 
   if (dist > 8) {
     hasMoved = true
 
-    // Si la tarjeta no está volteada y está deshabilitado el swipe antes de voltear, no arrastrar
     if (!props.isFlipped && !props.allowSwipeBeforeFlip) {
       return
     }
 
     isDragging.value = true
 
-    // Resistencia elástica más allá del umbral para sensación orgánica
-    const factor = dist > threshold.value ? 0.8 : 1
+    const factor = dist > threshold.value ? 0.75 : 1
     dragX.value = dx * factor
     dragY.value = dy * factor
 
-    // Detección de cruce de umbral y vibración háptica
     const passed = dist >= threshold.value
     if (passed && !hasPassedThreshold.value) {
       hasPassedThreshold.value = true
@@ -243,11 +398,14 @@ function onPointerMove(e: PointerEvent) {
 function onPointerUp(e: PointerEvent) {
   if (pointerId === null || pointerId !== e.pointerId) return
 
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+
   try {
     cardContainerRef.value?.releasePointerCapture(e.pointerId)
-  } catch {
-    // Ignorar si ya fue liberado
-  }
+  } catch {}
 
   pointerId = null
 
@@ -264,26 +422,7 @@ function onPointerUp(e: PointerEvent) {
     const passed = dist >= threshold.value
 
     if (passed && activeAction.value) {
-      // Swipe exitoso: animación de salida y registrar calificación
-      const rating = activeAction.value.rating
-      exitDirection.value = activeAction.value.direction
-      isExiting.value = true
-
-      if (navigator?.vibrate) {
-        navigator.vibrate(25)
-      }
-
-      emit('rate', rating)
-
-      // Restablecer posición después de la animación de salida
-      setTimeout(() => {
-        isExiting.value = false
-        exitDirection.value = null
-        dragX.value = 0
-        dragY.value = 0
-        isDragging.value = false
-        hasPassedThreshold.value = false
-      }, 230)
+      triggerCardExit(activeAction.value.rating, activeAction.value.direction)
     } else {
       // No superó el umbral: retorno suave
       dragX.value = 0
@@ -291,13 +430,17 @@ function onPointerUp(e: PointerEvent) {
       hasPassedThreshold.value = false
       setTimeout(() => {
         isDragging.value = false
-      }, 320)
+      }, 280)
     }
   }
 }
 
 function onPointerCancel(e: PointerEvent) {
   if (pointerId !== e.pointerId) return
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
   pointerId = null
   dragX.value = 0
   dragY.value = 0
@@ -313,15 +456,21 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 onMounted(() => window.addEventListener('keydown', onKeyDown))
-onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+})
 </script>
 
 <template>
-  <div class="relative w-full max-w-sm mx-auto h-[380px] sm:h-[420px] select-none touch-none">
-    <!-- Pistas directas de fondo (Backdrop Gmail cues en los 4 bordes) -->
+  <div class="relative w-full max-w-sm mx-auto h-[380px] sm:h-[420px] select-none touch-none contain-layout">
+    <!-- Pistas directas de fondo (Backdrop cues en los 4 bordes) -->
     <div
-      class="absolute inset-0 pointer-events-none transition-opacity duration-200 z-0 flex flex-col justify-between p-1"
-      :class="isDragging ? 'opacity-90' : 'opacity-0'"
+      class="absolute inset-0 pointer-events-none transition-opacity duration-150 z-0 flex flex-col justify-between p-1"
+      :class="isActionInProgress ? 'opacity-90' : 'opacity-0'"
     >
       <!-- Cue Arriba: Fácil -->
       <div class="flex justify-center">
@@ -329,8 +478,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           :class="[
             'px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-md',
             activeDirection === 'up'
-              ? 'bg-sky-500 text-white scale-110 shadow-sky-500/40 ring-2 ring-sky-400'
-              : 'bg-dark-900/90 text-sky-400 border border-sky-500/30',
+              ? 'bg-sky-500 text-white scale-105 ring-2 ring-sky-400'
+              : 'bg-dark-900 text-sky-400 border border-sky-500/30',
           ]"
         >
           <AppIcon name="lucide:arrow-up" :size="13" />
@@ -346,8 +495,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           :class="[
             'px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-md',
             activeDirection === 'left'
-              ? 'bg-rose-600 text-white scale-110 shadow-rose-600/40 ring-2 ring-rose-400'
-              : 'bg-dark-900/90 text-rose-400 border border-rose-500/30',
+              ? 'bg-rose-600 text-white scale-105 ring-2 ring-rose-400'
+              : 'bg-dark-900 text-rose-400 border border-rose-500/30',
           ]"
         >
           <AppIcon name="lucide:arrow-left" :size="13" />
@@ -359,8 +508,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           :class="[
             'px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-md',
             activeDirection === 'right'
-              ? 'bg-emerald-600 text-white scale-110 shadow-emerald-600/40 ring-2 ring-emerald-400'
-              : 'bg-dark-900/90 text-emerald-400 border border-emerald-500/30',
+              ? 'bg-emerald-600 text-white scale-105 ring-2 ring-emerald-400'
+              : 'bg-dark-900 text-emerald-400 border border-emerald-500/30',
           ]"
         >
           <span>BIEN ({{ intervals[3] }})</span>
@@ -374,8 +523,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           :class="[
             'px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-md',
             activeDirection === 'down'
-              ? 'bg-amber-600 text-white scale-110 shadow-amber-600/40 ring-2 ring-amber-400'
-              : 'bg-dark-900/90 text-amber-400 border border-amber-500/30',
+              ? 'bg-amber-600 text-white scale-105 ring-2 ring-amber-400'
+              : 'bg-dark-900 text-amber-400 border border-amber-500/30',
           ]"
         >
           <AppIcon name="lucide:arrow-down" :size="13" />
@@ -388,51 +537,55 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
     <!-- Contenedor Arrastrable de la Tarjeta -->
     <div
       ref="cardContainerRef"
-      class="relative w-full h-full cursor-grab active:cursor-grabbing z-10 will-change-transform perspective-1000"
+      class="relative w-full h-full cursor-grab active:cursor-grabbing z-10 perspective-1000"
       :style="cardTransformStyle"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
       @pointercancel="onPointerCancel"
     >
-      <!-- OVERLAY DE AYUDA GMAIL (Aparece en tiempo real sobre la tarjeta al arrastrar) -->
+      <!-- OVERLAY DE AYUDA GMAIL & TILT (Optimizado para GPU sin backdrop-filter costoso) -->
       <div
-        v-if="isDragging && activeAction"
-        class="absolute inset-0 z-30 pointer-events-none rounded-3xl flex flex-col items-center justify-center p-4 transition-all duration-150 backdrop-blur-[2px]"
+        v-if="isActionInProgress && activeAction"
+        class="absolute inset-0 z-30 pointer-events-none rounded-3xl flex flex-col items-center justify-center p-4 transition-opacity duration-100"
         :style="{
-          opacity: Math.min(gestureProgress * 1.1, 1),
-          backgroundColor: hasPassedThreshold
+          opacity: Math.min(gestureProgress * 1.15, 1),
+          backgroundColor: isActionConfirmed
             ? activeAction.color === 'emerald'
-              ? 'rgba(6, 78, 59, 0.45)'
+              ? 'rgba(6, 78, 59, 0.70)'
               : activeAction.color === 'rose'
-                ? 'rgba(136, 19, 55, 0.45)'
+                ? 'rgba(136, 19, 55, 0.70)'
                 : activeAction.color === 'sky'
-                  ? 'rgba(12, 74, 110, 0.45)'
-                  : 'rgba(120, 53, 15, 0.45)'
-            : 'rgba(15, 23, 42, 0.35)',
+                  ? 'rgba(12, 74, 110, 0.70)'
+                  : 'rgba(120, 53, 15, 0.70)'
+            : 'rgba(15, 23, 42, 0.55)',
         }"
       >
         <!-- Pill Central Dinámico -->
         <div
           :class="[
-            'px-5 py-3.5 rounded-2xl border-2 flex flex-col items-center gap-1.5 shadow-2xl backdrop-blur-md transition-transform duration-150',
+            'px-5 py-3 rounded-2xl border-2 flex flex-col items-center gap-1 shadow-xl transition-transform duration-100',
             activeAction.bgPill,
-            hasPassedThreshold ? 'scale-110 shadow-2xl ring-4 ring-white/20' : 'scale-95',
+            isActionConfirmed ? 'scale-105 ring-2 ring-white/30' : 'scale-95',
           ]"
         >
           <div class="flex items-center gap-2">
-            <AppIcon :name="activeAction.icon" :size="24" :class="activeAction.badgeColor" />
+            <AppIcon
+              :name="!isDragging && enableTilt ? 'lucide:smartphone' : activeAction.icon"
+              :size="22"
+              :class="activeAction.badgeColor"
+            />
             <span class="text-xl font-black tracking-wider uppercase font-mono">
               {{ activeAction.title }}
             </span>
-            <span class="text-sm font-bold font-mono px-2 py-0.5 rounded-lg bg-black/40 border border-white/10">
+            <span class="text-sm font-bold font-mono px-2 py-0.5 rounded-lg bg-black/60 border border-white/10">
               {{ activeAction.interval }}
             </span>
           </div>
 
-          <!-- Texto de ayuda estilo Gmail -->
+          <!-- Texto de ayuda según modo de control -->
           <p class="text-[11px] font-semibold tracking-wide">
-            {{ hasPassedThreshold ? '¡Suelta para calificar!' : 'Desliza más para confirmar...' }}
+            {{ helperText }}
           </p>
         </div>
       </div>
@@ -440,14 +593,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       <!-- Tarjeta 3D Volteable -->
       <div
         :class="[
-          'relative w-full h-full transition-transform duration-500 transform-style-3d rounded-3xl shadow-2xl',
+          'relative w-full h-full transition-transform duration-300 ease-out transform-style-3d rounded-3xl shadow-xl',
           isFlipped ? 'rotate-y-180' : '',
-          isDragging && activeAction ? activeAction.glowRing : '',
+          isActionInProgress && activeAction ? activeAction.glowRing : '',
         ]"
       >
         <!-- FRONT OF THE CARD -->
         <div
-          class="absolute inset-0 w-full h-full backface-hidden bg-gradient-to-br from-dark-900 to-dark-950 border border-dark-700/80 rounded-3xl p-6 flex flex-col justify-between items-center text-center shadow-xl overflow-hidden"
+          class="absolute inset-0 w-full h-full backface-hidden bg-gradient-to-br from-dark-900 to-dark-950 border border-dark-700/80 rounded-3xl p-6 flex flex-col justify-between items-center text-center shadow-lg overflow-hidden"
+          style="-webkit-backface-visibility: hidden; backface-visibility: hidden;"
         >
           <!-- Top bar of card -->
           <div class="w-full flex items-center justify-between">
@@ -480,18 +634,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           <!-- Center Content (Front) -->
           <div class="my-auto flex flex-col items-center justify-center">
             <template v-if="!reverseMode">
-              <div class="text-7xl sm:text-8xl font-black tracking-widest text-white font-mono drop-shadow-md">
+              <div class="text-7xl sm:text-8xl font-black tracking-widest text-white font-mono drop-shadow-sm">
                 {{ pair.pair }}
               </div>
               <p class="text-xs text-slate-500 mt-4 tracking-wider uppercase">
-                Toca para ver respuesta o desliza
+                {{ enableTilt ? 'Toca, desliza o inclina el móvil' : 'Toca para ver respuesta o desliza' }}
               </p>
             </template>
 
             <template v-else>
               <!-- Modo Inverso: Ver imagen/palabra primero -->
               <div v-if="pair.image" class="w-40 h-40 rounded-2xl overflow-hidden mb-3 border border-dark-700">
-                <img :src="pair.image" class="w-full h-full object-cover" />
+                <img :src="pair.image" class="w-full h-full object-cover" loading="eager" />
               </div>
               <div class="text-3xl font-extrabold text-green-300">
                 {{ pair.word || 'Sin palabra asignada' }}
@@ -511,9 +665,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
           </div>
         </div>
 
-        <!-- BACK OF THE CARD -->
+        <!-- BACK OF THE CARD (Solo se monta cuando la tarjeta se voltea) -->
         <div
-          class="absolute inset-0 w-full h-full backface-hidden rotate-y-180 bg-gradient-to-br from-dark-850 to-dark-900 border border-green-500/30 rounded-3xl p-5 flex flex-col justify-between items-center text-center shadow-2xl overflow-hidden"
+          v-if="hasFlippedOnce"
+          class="absolute inset-0 w-full h-full backface-hidden rotate-y-180 bg-gradient-to-br from-dark-850 to-dark-900 border border-green-500/30 rounded-3xl p-5 flex flex-col justify-between items-center text-center shadow-lg overflow-hidden"
+          style="-webkit-backface-visibility: hidden; backface-visibility: hidden;"
         >
           <!-- Top bar of back card -->
           <div class="w-full flex items-center justify-between">
@@ -537,12 +693,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
             <!-- Imagen si existe -->
             <div
               v-if="pair.image"
-              class="w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden border border-dark-700 bg-dark-950 mb-3 shadow-inner flex items-center justify-center"
+              class="w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden border border-dark-700 bg-dark-950 mb-3 flex items-center justify-center"
             >
               <img
                 :src="pair.image"
                 alt="Mnemotecnia"
                 class="w-full h-full object-contain"
+                loading="eager"
               />
             </div>
 
