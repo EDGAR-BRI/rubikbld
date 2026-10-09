@@ -17,12 +17,20 @@ import {
   showPwaInstallInstructions,
 } from '@/utils/alerts'
 import { usePwaInstall } from '@/composables/usePwaInstall'
+import { useAppUpdate } from '@/composables/useAppUpdate'
 import { useNetwork } from '@vueuse/core'
 import { APP_VERSION } from '@/config/version'
+import AppUpdateModal from '@/components/ui/AppUpdateModal.vue'
 
 const settingsStore = useSettingsStore()
 const { isInstalled, isIOS, promptInstall } = usePwaInstall()
 const { isOnline } = useNetwork()
+const {
+  isCheckingUpdate,
+  updateStatusText,
+  updateDetailText,
+  checkForUpdates,
+} = useAppUpdate()
 
 const showGestureModal = ref(false)
 
@@ -584,16 +592,16 @@ function openGithubUrl(url: string) {
         </div>
       </div>
 
-      <!-- SECCIÓN 2.2: Control por Inclinación (Giroscopio / Manos Libres) -->
+      <!-- SECCIÓN 2.2: Control por Giroscopio Estilo Látigo (Manos Libres) -->
       <div class="bg-dark-900 border border-dark-800 rounded-3xl p-5 shadow-xl">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <AppIcon name="lucide:smartphone" :size="20" />
+              <AppIcon name="lucide:zap" :size="20" />
             </div>
             <div>
-              <h2 class="text-base font-bold text-white">Inclinación del Móvil</h2>
-              <p class="text-xs text-slate-400">Giroscopio manos libres para BLD</p>
+              <h2 class="text-base font-bold text-white">Giroscopio Estilo Látigo</h2>
+              <p class="text-xs text-slate-400">Giro rápido de muñeca (Manos libres)</p>
             </div>
           </div>
           <button
@@ -607,22 +615,22 @@ function openGithubUrl(url: string) {
         </div>
 
         <div class="flex flex-col gap-4">
-          <!-- Toggle Inclinación -->
+          <!-- Toggle Giroscopio Látigo -->
           <AppSwitch
             v-model="settingsStore.enableTiltGestures"
-            label="Control por inclinación"
-            description="Califica inclinando el teléfono hacia los lados. Ideal para sostener el cubo con una mano."
+            label="Gesto estilo látigo"
+            description="Califica dando un giro seco con la muñeca. Solo activo cuando la tarjeta está dada vuelta."
             @change="handleToggleTilt"
           />
 
           <!-- Opciones de inclinación cuando está activo -->
           <template v-if="settingsStore.enableTiltGestures">
-            <!-- Selector de Sensibilidad de inclinación -->
+            <!-- Selector de Sensibilidad de látigo -->
             <div class="pt-3 border-t border-dark-800">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-medium text-slate-200">Sensibilidad de inclinación</span>
+                <span class="text-sm font-medium text-slate-200">Sensibilidad del latigazo</span>
                 <span class="text-xs font-mono text-slate-400">
-                  {{ settingsStore.tiltSensitivity === 'high' ? 'Sensible (15°)' : settingsStore.tiltSensitivity === 'low' ? 'Firme (30°)' : 'Normal (22°)' }}
+                  {{ settingsStore.tiltSensitivity === 'high' ? 'Sensible (95°/s)' : settingsStore.tiltSensitivity === 'low' ? 'Firme (160°/s)' : 'Normal (120°/s)' }}
                 </span>
               </div>
               <div class="grid grid-cols-3 gap-2">
@@ -665,45 +673,45 @@ function openGithubUrl(url: string) {
               </div>
             </div>
 
-            <!-- Cheat sheet de direcciones de inclinación -->
+            <!-- Cheat sheet de direcciones de latigazo -->
             <div class="pt-3 border-t border-dark-800 grid grid-cols-2 gap-2 text-xs">
               <div class="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40 flex items-center gap-2">
-                <span class="font-bold text-emerald-400 text-sm">📲→</span>
+                <span class="font-bold text-emerald-400 text-sm">⚡→</span>
                 <div>
-                  <p class="font-bold text-emerald-300">Inclinar Derecha</p>
+                  <p class="font-bold text-emerald-300">Latigazo Derecha</p>
                   <p class="text-[10px] text-slate-400">Bien</p>
                 </div>
               </div>
 
               <div class="p-2.5 rounded-xl bg-rose-950/30 border border-rose-800/40 flex items-center gap-2">
-                <span class="font-bold text-rose-400 text-sm">←📲</span>
+                <span class="font-bold text-rose-400 text-sm">←⚡</span>
                 <div>
-                  <p class="font-bold text-rose-300">Inclinar Izquierda</p>
+                  <p class="font-bold text-rose-300">Latigazo Izquierda</p>
                   <p class="text-[10px] text-slate-400">Otra vez</p>
                 </div>
               </div>
 
               <div class="p-2.5 rounded-xl bg-sky-950/30 border border-sky-800/40 flex items-center gap-2">
-                <span class="font-bold text-sky-400 text-sm">⬆️📲</span>
+                <span class="font-bold text-sky-400 text-sm">⬆️⚡</span>
                 <div>
-                  <p class="font-bold text-sky-300">Inclinar Adelante</p>
+                  <p class="font-bold text-sky-300">Latigazo Adelante</p>
                   <p class="text-[10px] text-slate-400">Fácil</p>
                 </div>
               </div>
 
               <div class="p-2.5 rounded-xl bg-amber-950/30 border border-amber-800/40 flex items-center gap-2">
-                <span class="font-bold text-amber-400 text-sm">⬇️📲</span>
+                <span class="font-bold text-amber-400 text-sm">⬇️⚡</span>
                 <div>
-                  <p class="font-bold text-amber-300">Inclinar Hacia Ti</p>
+                  <p class="font-bold text-amber-300">Latigazo Hacia Ti</p>
                   <p class="text-[10px] text-slate-400">Difícil</p>
                 </div>
               </div>
             </div>
 
             <div class="p-3 bg-dark-950/80 rounded-2xl border border-dark-800 text-[11px] text-slate-400 flex items-start gap-2">
-              <AppIcon name="lucide:info" :size="15" class="text-emerald-400 shrink-0 mt-0.5" />
+              <AppIcon name="lucide:shield-check" :size="16" class="text-emerald-400 shrink-0 mt-0.5" />
               <span>
-                El sensor calibra automáticamente tu posición de descanso con cada tarjeta. Mantén la inclinación una fracción de segundo (~0.2s) para confirmar la calificación con vibración háptica.
+                <strong>Seguridad anti-salto:</strong> El giroscopio solo se activa tras voltear la tarjeta. Así nunca se pasarán dos tarjetas seguidas por error. Voltea primero para ver la respuesta y luego gira la muñeca con un movimiento seco.
               </span>
             </div>
           </template>
@@ -913,6 +921,37 @@ function openGithubUrl(url: string) {
         </div>
       </div>
 
+      <!-- SECCIÓN FINAL: Actualizaciones y Nueva Versión (Abajo de Ajustes) -->
+      <div class="bg-dark-900 border border-dark-800 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5 w-full sm:w-auto">
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            <AppIcon name="lucide:refresh-cw" :size="20" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-white">Actualizaciones de la App</h2>
+              <span class="font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                v{{ APP_VERSION }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Comprueba si hay una nueva versión disponible y actualiza los archivos locales
+            </p>
+          </div>
+        </div>
+
+        <AppButton
+          variant="primary"
+          size="md"
+          icon="lucide:refresh-cw"
+          class="w-full sm:w-auto justify-center bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-950/40 shrink-0"
+          :disabled="isCheckingUpdate"
+          @click="checkForUpdates"
+        >
+          Buscar nueva versión y actualizar
+        </AppButton>
+      </div>
+
       <!-- Footer informativo con versión -->
       <div class="mt-2 text-center text-xs text-slate-500 flex flex-col items-center gap-1 pb-4">
         <p class="font-medium text-slate-400">Memo Cube • v{{ APP_VERSION }}</p>
@@ -922,5 +961,13 @@ function openGithubUrl(url: string) {
 
     <!-- Modal de ayuda interactiva para los gestos táctiles -->
     <CardGestureHelpModal v-model="showGestureModal" />
+
+    <!-- Modal de carga con loader 3D del cubo para búsqueda de actualizaciones -->
+    <AppUpdateModal
+      v-model="isCheckingUpdate"
+      :status-text="updateStatusText"
+      :detail-text="updateDetailText"
+      :current-version="APP_VERSION"
+    />
   </div>
 </template>

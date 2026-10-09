@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.14.0] - 2026-10-09
+- 🚀 feat(settings): anadir configuracion de latigazo y verificador de actualizaciones
+
 ## [0.13.0] - 2026-10-09
 - 🚀 feat(study): implementar control por giroscopio estilo latigo activo solo tras voltear
 
