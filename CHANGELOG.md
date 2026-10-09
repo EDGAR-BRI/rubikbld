@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.14.1] - 2026-10-09
+- ⚡ perf(ui): optimizar rubik loader 3d reduciendo caras y sombras para moviles
+
 ## [0.14.0] - 2026-10-09
 - 🚀 feat(settings): anadir configuracion de latigazo y verificador de actualizaciones
 
