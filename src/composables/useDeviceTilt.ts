@@ -11,9 +11,12 @@ export interface DeviceTiltOptions {
 }
 
 /**
- * Composable para control por inclinación del dispositivo (DeviceOrientation / Giroscopio).
+ * Composable para control por giroscopio con detección de gesto tipo "LÁTIGO" (Whip flick).
  * Diseñado especialmente para cuberos BLD que usan el smartphone con una mano mientras
  * manipulan el cubo con la otra.
+ *
+ * PRECAUCIÓN: Solo se activa cuando la tarjeta está volteada (isFlipped), evitando
+ * al 100% que dos tarjetas pasen consecutivas por accidente.
  */
 export function useDeviceTilt(options: DeviceTiltOptions = {}) {
   const isSupported = ref(typeof window !== 'undefined' && 'DeviceOrientationEvent' in window)
@@ -25,9 +28,13 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
   const rawBeta = ref(0)
   const rawGamma = ref(0)
 
-  // Grados suavizados con filtro paso-bajo (Lerp) para evitar temblores
+  // Grados suavizados con respuesta rápida para gestos látigo
   const smoothBeta = ref(45)
   const smoothGamma = ref(0)
+
+  // Velocidad angular (grados por segundo) para detectar el latigazo
+  const velocityX = ref(0)
+  const velocityY = ref(0)
 
   // Línea de base (posición neutral de descanso de la mano)
   const baselineBeta = ref<number | null>(null)
@@ -37,10 +44,13 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
   const deltaX = ref(0)
   const deltaY = ref(0)
 
-  // Temporizador de sostenimiento para evitar disparos accidentales
+  // Temporizadores
   let holdTimer: number | null = null
   let cooldownTimer: number | null = null
   let isCalibrated = false
+  let lastTimestamp = 0
+  let lastRawGamma = 0
+  let lastRawBeta = 45
 
   const isEnabled = computed(() => {
     if (!options.enabled) return true
@@ -52,30 +62,48 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
     return typeof options.sensitivity === 'function' ? options.sensitivity() : options.sensitivity.value
   })
 
-  // Umbrales angulares según sensibilidad seleccionada
-  const angularThresholds = computed(() => {
+  // Umbrales angulares y de velocidad de latigazo según sensibilidad
+  const thresholds = computed(() => {
     switch (sensitivity.value) {
       case 'high':
-        return { x: 15, y: 17 } // Muy sensible, requiere poco giro
+        return {
+          steadyX: 14,
+          steadyY: 16,
+          whipAngle: 10,
+          whipSpeed: 95, // deg/sec
+        }
       case 'low':
-        return { x: 30, y: 32 } // Firme y deliberado
+        return {
+          steadyX: 24,
+          steadyY: 26,
+          whipAngle: 17,
+          whipSpeed: 160,
+        }
       case 'normal':
       default:
-        return { x: 22, y: 24 } // Equilibrado
+        return {
+          steadyX: 18,
+          steadyY: 20,
+          whipAngle: 13,
+          whipSpeed: 120,
+        }
     }
   })
 
   // Progreso hacia el umbral de disparo [0, 1.25]
   const progress = computed(() => {
-    const { x, y } = angularThresholds.value
-    const normX = Math.abs(deltaX.value) / x
-    const normY = Math.abs(deltaY.value) / y
+    const { steadyX, steadyY } = thresholds.value
+    const normX = Math.abs(deltaX.value) / steadyX
+    const normY = Math.abs(deltaY.value) / steadyY
     return Math.min(Math.hypot(normX, normY), 1.3)
   })
 
+  // Velocidad total del movimiento de muñeca
+  const totalSpeed = computed(() => Math.hypot(velocityX.value, velocityY.value))
+
   // Dirección dominante activa
   const activeDirection = computed<TiltDirection | null>(() => {
-    if (progress.value < 0.25) return null
+    if (progress.value < 0.22 && totalSpeed.value < 60) return null
 
     const absX = Math.abs(deltaX.value)
     const absY = Math.abs(deltaY.value)
@@ -83,12 +111,12 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
     if (absX >= absY) {
       return deltaX.value > 0 ? 'right' : 'left'
     } else {
-      // deltaY < 0 es inclinación hacia adelante (arriba); deltaY > 0 hacia el usuario (abajo)
+      // deltaY < 0 es latigazo hacia adelante (arriba); deltaY > 0 hacia el usuario (abajo)
       return deltaY.value < 0 ? 'up' : 'down'
     }
   })
 
-  // ¿Ha superado el umbral para disparar?
+  // ¿Ha superado el umbral sostenido o de latigazo?
   const isPastThreshold = computed(() => progress.value >= 1.0 && !isLocked.value)
 
   /**
@@ -122,6 +150,8 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
     baselineGamma.value = smoothGamma.value
     deltaX.value = 0
     deltaY.value = 0
+    velocityX.value = 0
+    velocityY.value = 0
     isLocked.value = false
     isCalibrated = true
     clearTimers()
@@ -141,13 +171,31 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
   /**
    * Bloquea temporalmente el sensor tras una calificación hasta que el teléfono vuelva al centro
    */
-  function lockUntilNeutral(cooldownMs: number = 400) {
+  function lockUntilNeutral(cooldownMs: number = 350) {
     isLocked.value = true
     clearTimers()
 
     cooldownTimer = window.setTimeout(() => {
-      // El desbloqueo real ocurrirá en handleOrientation cuando vuelva a progress < 0.3
+      // El desbloqueo real ocurrirá en handleOrientation cuando vuelva al centro neutro
     }, cooldownMs)
+  }
+
+  /**
+   * Ejecuta el disparo de calificación con confirmación háptica estilo látigo
+   */
+  function executeTrigger(direction: TiltDirection) {
+    if (isLocked.value || !isEnabled.value) return
+
+    // Vibración de doble pulso rápida estilo "chasquido de látigo"
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([20, 25, 30])
+      } catch (_) {}
+    }
+
+    clearTimers()
+    options.onTrigger?.(direction)
+    lockUntilNeutral(450)
   }
 
   function handleOrientation(event: DeviceOrientationEvent) {
@@ -159,9 +207,24 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
     rawBeta.value = beta
     rawGamma.value = gamma
 
-    // Filtro paso-bajo suave (Lerp) para filtrar vibraciones de la mano
-    smoothBeta.value += (beta - smoothBeta.value) * 0.35
-    smoothGamma.value += (gamma - smoothGamma.value) * 0.35
+    const now = performance.now()
+    if (lastTimestamp > 0) {
+      const dt = (now - lastTimestamp) / 1000
+      if (dt > 0.005 && dt < 0.25) {
+        const rawVelX = (gamma - lastRawGamma) / dt
+        const rawVelY = (beta - lastRawBeta) / dt
+        // Suavizado rápido para capturar el latigazo instantáneamente
+        velocityX.value += (rawVelX - velocityX.value) * 0.6
+        velocityY.value += (rawVelY - velocityY.value) * 0.6
+      }
+    }
+    lastTimestamp = now
+    lastRawGamma = gamma
+    lastRawBeta = beta
+
+    // Filtro con factor 0.5 para respuesta ultra ágil al latigazo
+    smoothBeta.value += (beta - smoothBeta.value) * 0.5
+    smoothGamma.value += (gamma - smoothGamma.value) * 0.5
 
     // Primera calibración automática en reposo
     if (!isCalibrated || baselineBeta.value === null || baselineGamma.value === null) {
@@ -170,35 +233,49 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
       isCalibrated = true
     }
 
-    // Calcular desviación relativa respecto a la posición neutra
+    // Desviación relativa respecto al centro neutro
     deltaX.value = smoothGamma.value - (baselineGamma.value || 0)
     deltaY.value = smoothBeta.value - (baselineBeta.value || 45)
 
-    // Si estaba bloqueado, verificar si regresó a la zona neutral para desbloquear
+    // Si estaba bloqueado, desbloquear solo al regresar cerca del centro neutro
     if (isLocked.value) {
-      if (progress.value < 0.3) {
+      if (progress.value < 0.28) {
         isLocked.value = false
       }
       return
     }
 
-    // Comprobación de disparo deliberado
-    if (isPastThreshold.value && activeDirection.value) {
+    const dir = activeDirection.value
+    if (!dir) {
+      if (holdTimer !== null) {
+        clearTimeout(holdTimer)
+        holdTimer = null
+      }
+      return
+    }
+
+    const { whipAngle, whipSpeed } = thresholds.value
+    const absX = Math.abs(deltaX.value)
+    const absY = Math.abs(deltaY.value)
+    const dominantAngle = Math.max(absX, absY)
+    const dominantSpeed = Math.max(Math.abs(velocityX.value), Math.abs(velocityY.value))
+
+    // ⚡ DETECCIÓN DE LATIGAZO (Whip flick instantáneo):
+    // Si la velocidad angular es alta y el ángulo de muñeca superó el umbral de látigo
+    if (dominantSpeed >= whipSpeed && dominantAngle >= whipAngle) {
+      executeTrigger(dir)
+      return
+    }
+
+    // Detección por inclinación progresiva / sostenida (como respaldo suave)
+    if (isPastThreshold.value) {
       if (holdTimer === null) {
-        const holdMs = options.holdDurationMs ?? 240
-        const triggerDir = activeDirection.value
+        const holdMs = options.holdDurationMs ?? 75 // Muy rápido (75ms)
+        const triggerDir = dir
 
         holdTimer = window.setTimeout(() => {
           if (isPastThreshold.value && activeDirection.value === triggerDir && !isLocked.value) {
-            // Vibración háptica de confirmación si está soportada
-            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-              try {
-                navigator.vibrate(45)
-              } catch (_) {}
-            }
-
-            options.onTrigger?.(triggerDir)
-            lockUntilNeutral(500)
+            executeTrigger(triggerDir)
           }
           holdTimer = null
         }, holdMs)
@@ -216,6 +293,7 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
     window.addEventListener('deviceorientation', handleOrientation, { passive: true })
     isListening.value = true
     isCalibrated = false
+    lastTimestamp = 0
   }
 
   function stopListening() {
@@ -258,6 +336,9 @@ export function useDeviceTilt(options: DeviceTiltOptions = {}) {
     smoothGamma,
     deltaX,
     deltaY,
+    velocityX,
+    velocityY,
+    totalSpeed,
     progress,
     activeDirection,
     isPastThreshold,

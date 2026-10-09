@@ -168,23 +168,23 @@ function close() {
         </div>
       </template>
 
-      <!-- PESTAÑA 2: Inclinación del Teléfono (Giroscopio) -->
+      <!-- PESTAÑA 2: Inclinación del Teléfono (Giroscopio Estilo Látigo) -->
       <template v-else>
         <p class="text-xs text-slate-300 leading-relaxed">
-          Usa el <strong>giroscopio de tu smartphone</strong> para calificar girando la muñeca. Diseñado para sostener el cubo de Rubik con una mano y el teléfono con la otra:
+          Gesto <strong>estilo látigo</strong> con el giroscopio: Voltea la tarjeta primero y realiza un giro rápido y seco con la muñeca para calificar al instante:
         </p>
 
-        <!-- Diagrama visual de inclinación -->
+        <!-- Diagrama visual de latigazo -->
         <div class="relative w-full max-w-xs mx-auto py-3 px-2 flex flex-col items-center">
-          <!-- Arriba: FÁCIL (Inclinar adelante) -->
+          <!-- Arriba: FÁCIL (Latigazo adelante) -->
           <div class="flex flex-col items-center mb-2">
             <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-300 font-bold text-xs shadow-md shadow-sky-500/10">
-              <span>⬆️ Adelante: Fácil</span>
+              <span>⬆️ Latigazo Adelante: Fácil</span>
               <AppIcon name="lucide:zap" :size="13" class="text-sky-400" />
             </div>
           </div>
 
-          <!-- Fila central: INCLINAR IZQ - MÓVIL - INCLINAR DER -->
+          <!-- Fila central: LATIGAZO IZQ - MÓVIL - LATIGAZO DER -->
           <div class="w-full flex items-center justify-between gap-2">
             <!-- Izquierda: OTRA VEZ -->
             <div class="flex flex-col items-center shrink-0">
@@ -195,13 +195,13 @@ function close() {
               </div>
             </div>
 
-            <!-- Móvil simulado con giroscopio -->
+            <!-- Móvil simulado con giroscopio látigo -->
             <div class="flex-1 max-w-[140px] h-28 rounded-2xl bg-gradient-to-br from-emerald-950/40 to-dark-950 border-2 border-emerald-500/30 flex flex-col items-center justify-center p-2 text-center shadow-xl">
-              <div class="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-1 animate-pulse">
-                <AppIcon name="lucide:smartphone" :size="20" />
+              <div class="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-1">
+                <AppIcon name="lucide:zap" :size="20" class="text-emerald-400 animate-pulse" />
               </div>
-              <span class="text-[11px] font-bold text-emerald-300">Gira el móvil</span>
-              <span class="text-[9px] text-slate-400 mt-0.5">Mantén ~0.2s</span>
+              <span class="text-[11px] font-bold text-emerald-300">Giro Látigo</span>
+              <span class="text-[9px] text-slate-400 mt-0.5">Rápido y seco</span>
             </div>
 
             <!-- Derecha: BIEN -->
@@ -214,7 +214,7 @@ function close() {
             </div>
           </div>
 
-          <!-- Abajo: DIFÍCIL (Inclinar hacia ti) -->
+          <!-- Abajo: DIFÍCIL (Latigazo hacia ti) -->
           <div class="flex flex-col items-center mt-2">
             <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-xs shadow-md shadow-amber-500/10">
               <span>⬇️ Hacia ti: Difícil</span>
@@ -223,57 +223,57 @@ function close() {
           </div>
         </div>
 
-        <!-- Tarjetas de detalle de inclinación -->
+        <!-- Tarjetas de detalle de latigazo -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-900/30">
             <div class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 font-bold">
-              📲→
+              ⚡→
             </div>
             <div>
-              <p class="font-bold text-emerald-300">Inclinar a la Derecha: Bien</p>
-              <p class="text-slate-400 text-[11px] mt-0.5">Giro natural de muñeca. Califica Bien.</p>
+              <p class="font-bold text-emerald-300">Derecha: Bien</p>
+              <p class="text-slate-400 text-[11px] mt-0.5">Latigazo rápido a la derecha.</p>
             </div>
           </div>
 
           <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-rose-950/20 border border-rose-900/30">
             <div class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 font-bold">
-              ←📲
+              ←⚡
             </div>
             <div>
-              <p class="font-bold text-rose-300">Inclinar a la Izquierda: Otra vez</p>
-              <p class="text-slate-400 text-[11px] mt-0.5">Giro hacia la izquierda. Repite la tarjeta.</p>
+              <p class="font-bold text-rose-300">Izquierda: Otra vez</p>
+              <p class="text-slate-400 text-[11px] mt-0.5">Latigazo rápido a la izquierda.</p>
             </div>
           </div>
 
           <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-sky-950/20 border border-sky-900/30">
             <div class="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 font-bold">
-              ⬆️📲
+              ⬆️⚡
             </div>
             <div>
-              <p class="font-bold text-sky-300">Inclinar Adelante: Fácil</p>
-              <p class="text-slate-400 text-[11px] mt-0.5">Inclina el tope del móvil hacia el frente.</p>
+              <p class="font-bold text-sky-300">Adelante: Fácil</p>
+              <p class="text-slate-400 text-[11px] mt-0.5">Latigazo del tope hacia adelante.</p>
             </div>
           </div>
 
           <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-950/20 border border-amber-900/30">
             <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 font-bold">
-              ⬇️📲
+              ⬇️⚡
             </div>
             <div>
-              <p class="font-bold text-amber-300">Inclinar Hacia Ti: Difícil</p>
-              <p class="text-slate-400 text-[11px] mt-0.5">Inclina la pantalla hacia tu rostro.</p>
+              <p class="font-bold text-amber-300">Hacia Ti: Difícil</p>
+              <p class="text-slate-400 text-[11px] mt-0.5">Latigazo rápido hacia tu cara.</p>
             </div>
           </div>
         </div>
 
-        <!-- Consejos de uso -->
+        <!-- Precaución y modo de uso seguro -->
         <div class="p-3 bg-dark-950/80 rounded-xl border border-dark-800 text-[11px] text-slate-400 flex flex-col gap-1.5">
           <div class="flex items-center gap-1.5 font-bold text-emerald-400">
-            <AppIcon name="lucide:sparkles" :size="14" />
-            <span>Calibración Automática</span>
+            <AppIcon name="lucide:shield-check" :size="14" />
+            <span>Seguridad Anti-Salto de Tarjetas</span>
           </div>
           <p>
-            Cada vez que aparece una tarjeta, el sensor toma como punto neutro la inclinación actual de tu mano. Para calificar, solo gira y mantén la posición ~0.2 segundos hasta sentir la vibración.
+            El giroscopio <strong>solo se activa tras voltear la tarjeta</strong>. Así tienes tiempo de ver el par de letras con total calma y es imposible que dos tarjetas pasen de golpe. Voltea con un toque, y luego haz el latigazo para calificar.
           </p>
         </div>
       </template>

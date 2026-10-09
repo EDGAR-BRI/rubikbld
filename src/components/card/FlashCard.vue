@@ -58,6 +58,10 @@ watch(
   (val) => {
     if (val) {
       hasFlippedOnce.value = true
+      // PRECAUCIÓN: Al voltear la tarjeta se calibra el neutro y se activa un breve bloqueo
+      // de 280ms para evitar que el toque de volteo dispare el latigazo por error.
+      tilt.calibrate()
+      tilt.lockUntilNeutral(280)
     }
   },
   { immediate: true },
@@ -89,11 +93,12 @@ const threshold = computed(() => {
 // Distancia total recorrida por arrastre táctil
 const dragDistance = computed(() => Math.hypot(dragX.value, dragY.value))
 
-// Integración del sensor de inclinación (Giroscopio)
+// Integración del sensor de giroscopio con gesto estilo "Látigo" (Whip flick)
+// PRECAUCIÓN ESTRICTA: Solo activo cuando la tarjeta está dada vuelta (props.isFlipped)
 const tilt = useDeviceTilt({
-  enabled: () => !!props.enableTilt && !isDragging.value,
+  enabled: () => !!props.enableTilt && props.isFlipped && !isDragging.value,
   sensitivity: () => props.tiltSensitivity ?? 'normal',
-  holdDurationMs: 220,
+  holdDurationMs: 75,
   onTrigger: (direction) => {
     handleTiltTrigger(direction)
   },
@@ -136,7 +141,8 @@ function triggerCardExit(rating: ReviewRating, direction: 'right' | 'left' | 'up
 
 function handleTiltTrigger(direction: TiltDirection) {
   if (isDragging.value || isExiting.value) return
-  if (!props.isFlipped && !props.allowSwipeBeforeFlip) return
+  // PRECAUCIÓN ESTRICTA: El giroscopio SOLO califica cuando la tarjeta está dada vuelta
+  if (!props.isFlipped) return
 
   const ratingMap: Record<TiltDirection, ReviewRating> = {
     right: 3,
@@ -148,7 +154,7 @@ function handleTiltTrigger(direction: TiltDirection) {
   triggerCardExit(rating, direction)
 }
 
-// Dirección dominante actual (Soporta arrastre táctil o inclinación del dispositivo)
+// Dirección dominante actual (Soporta arrastre táctil o latigazo del móvil)
 const activeDirection = computed<'right' | 'left' | 'up' | 'down' | null>(() => {
   if (isDragging.value) {
     if (dragDistance.value < 10) return null
@@ -162,9 +168,8 @@ const activeDirection = computed<'right' | 'left' | 'up' | 'down' | null>(() => 
     }
   }
 
-  // Si no se arrastra con el dedo, verificar inclinación activa
-  if (props.enableTilt && !tilt.isLocked.value && tilt.progress.value >= 0.25) {
-    if (!props.isFlipped && !props.allowSwipeBeforeFlip) return null
+  // Si no se arrastra con el dedo, verificar latigazo activo (SOLO si la tarjeta está volteada)
+  if (props.enableTilt && props.isFlipped && !tilt.isLocked.value && (tilt.progress.value >= 0.22 || tilt.totalSpeed.value >= 50)) {
     return tilt.activeDirection.value
   }
 
@@ -227,11 +232,10 @@ const activeAction = computed(() => {
   }
 })
 
-// ¿Hay una acción de arrastre o inclinación activa?
+// ¿Hay una acción de arrastre o latigazo activa?
 const isActionInProgress = computed(() => {
   if (isDragging.value) return true
-  if (props.enableTilt && !tilt.isLocked.value && tilt.progress.value >= 0.25) {
-    if (!props.isFlipped && !props.allowSwipeBeforeFlip) return false
+  if (props.enableTilt && props.isFlipped && !tilt.isLocked.value && (tilt.progress.value >= 0.25 || tilt.totalSpeed.value >= 70)) {
     return true
   }
   return false
@@ -240,7 +244,7 @@ const isActionInProgress = computed(() => {
 // ¿Ha superado el umbral para confirmar?
 const isActionConfirmed = computed(() => {
   if (isDragging.value) return hasPassedThreshold.value
-  if (props.enableTilt) return tilt.isPastThreshold.value
+  if (props.enableTilt && props.isFlipped) return tilt.isPastThreshold.value
   return false
 })
 
@@ -249,32 +253,32 @@ const gestureProgress = computed(() => {
   if (isDragging.value) {
     return Math.min(dragDistance.value / threshold.value, 1.25)
   }
-  if (props.enableTilt) {
+  if (props.enableTilt && props.isFlipped) {
     return tilt.progress.value
   }
   return 0
 })
 
-// Texto de ayuda dinámico según el modo (arrastre o inclinación)
+// Texto de ayuda dinámico según el modo (arrastre o latigazo)
 const helperText = computed(() => {
   if (isDragging.value) {
     return hasPassedThreshold.value ? '¡Suelta para calificar!' : 'Desliza más para confirmar...'
   }
-  if (props.enableTilt) {
-    return tilt.isPastThreshold.value ? '¡Mantén la inclinación!' : 'Inclina un poco más...'
+  if (props.enableTilt && props.isFlipped) {
+    return tilt.isPastThreshold.value ? '¡Gesto confirmado!' : 'Gira rápido con la muñeca (látigo)...'
   }
   return ''
 })
 
-// Offset visual dinámico cuando se inclina el móvil
+// Offset visual dinámico cuando se hace el latigazo con el móvil (SOLO si está volteada)
 const tiltVisualX = computed(() => {
-  if (!props.enableTilt || isDragging.value || isExiting.value) return 0
-  return Math.max(Math.min(tilt.deltaX.value * 3.5, 75), -75)
+  if (!props.enableTilt || !props.isFlipped || isDragging.value || isExiting.value) return 0
+  return Math.max(Math.min(tilt.deltaX.value * 4.2, 95), -95)
 })
 
 const tiltVisualY = computed(() => {
-  if (!props.enableTilt || isDragging.value || isExiting.value) return 0
-  return Math.max(Math.min(tilt.deltaY.value * 2.8, 65), -65)
+  if (!props.enableTilt || !props.isFlipped || isDragging.value || isExiting.value) return 0
+  return Math.max(Math.min(tilt.deltaY.value * 3.5, 80), -80)
 })
 
 // Estilo de transformación reactivo y ligero (aceleración GPU con translate3d)
@@ -285,23 +289,24 @@ const cardTransformStyle = computed(() => {
     let exitRotate = 0
 
     if (exitDirection.value === 'right') {
-      exitX = 520
-      exitRotate = 16
+      exitX = 580
+      exitRotate = 20
     } else if (exitDirection.value === 'left') {
-      exitX = -520
-      exitRotate = -16
+      exitX = -580
+      exitRotate = -20
     } else if (exitDirection.value === 'up') {
-      exitY = -520
+      exitY = -580
       exitRotate = 0
     } else if (exitDirection.value === 'down') {
-      exitY = 520
+      exitY = 580
       exitRotate = 0
     }
 
+    // Salida veloz estilo chasquido de látigo
     return {
-      transform: `translate3d(${exitX}px, ${exitY}px, 0) rotate(${exitRotate}deg) scale(0.9)`,
+      transform: `translate3d(${exitX}px, ${exitY}px, 0) rotate(${exitRotate}deg) scale(0.88)`,
       opacity: '0',
-      transition: 'transform 0.18s ease-out, opacity 0.18s ease-out',
+      transition: 'transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1.2), opacity 0.14s ease-out',
       willChange: 'transform, opacity',
     }
   }
@@ -315,11 +320,11 @@ const cardTransformStyle = computed(() => {
     }
   }
 
-  if (props.enableTilt && (tiltVisualX.value !== 0 || tiltVisualY.value !== 0)) {
-    const rotation = tiltVisualX.value * 0.08
+  if (props.enableTilt && props.isFlipped && (tiltVisualX.value !== 0 || tiltVisualY.value !== 0)) {
+    const rotation = tiltVisualX.value * 0.1
     return {
       transform: `translate3d(${tiltVisualX.value}px, ${tiltVisualY.value}px, 0) rotate(${rotation}deg)`,
-      transition: 'transform 0.08s ease-out',
+      transition: 'transform 0.06s ease-out',
       willChange: 'transform',
     }
   }
@@ -638,7 +643,7 @@ onUnmounted(() => {
                 {{ pair.pair }}
               </div>
               <p class="text-xs text-slate-500 mt-4 tracking-wider uppercase">
-                {{ enableTilt ? 'Toca, desliza o inclina el móvil' : 'Toca para ver respuesta o desliza' }}
+                Toca para ver respuesta o desliza
               </p>
             </template>
 
@@ -720,7 +725,11 @@ onUnmounted(() => {
           <!-- Bottom Interval / Details info -->
           <div class="w-full flex items-center justify-between text-[11px] text-slate-400 px-2 pt-2 border-t border-dark-800">
             <span>Repasos: {{ card.repetitions }}</span>
-            <span>Facilidad: {{ (card.easeFactor * 100).toFixed(0) }}%</span>
+            <span v-if="enableTilt" class="text-emerald-400 font-semibold flex items-center gap-1">
+              <AppIcon name="lucide:zap" :size="12" />
+              <span>Gesto látigo activo</span>
+            </span>
+            <span v-else>Facilidad: {{ (card.easeFactor * 100).toFixed(0) }}%</span>
             <span>Fallos: {{ card.lapses }}</span>
           </div>
         </div>

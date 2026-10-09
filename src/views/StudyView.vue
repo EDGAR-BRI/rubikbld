@@ -145,12 +145,12 @@ async function onRefreshSession() {
               ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20'
               : 'text-sky-400 bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20',
           ]"
-          :title="settingsStore.enableTiltGestures ? 'Inclinación de móvil activa (Clic para ver guía)' : 'Ver gestos de tarjetas'"
-          :aria-label="settingsStore.enableTiltGestures ? 'Inclinación de móvil activa' : 'Ver gestos de tarjetas'"
+          :title="settingsStore.enableTiltGestures ? 'Giroscopio estilo látigo activo (Clic para ver guía)' : 'Ver gestos de tarjetas'"
+          :aria-label="settingsStore.enableTiltGestures ? 'Giroscopio estilo látigo activo' : 'Ver gestos de tarjetas'"
           @click="showGestureHelp = true"
         >
-          <AppIcon :name="settingsStore.enableTiltGestures ? 'lucide:smartphone' : 'lucide:hand'" :size="15" />
-          <span class="hidden sm:inline">{{ settingsStore.enableTiltGestures ? 'Inclinación' : 'Gestos' }}</span>
+          <AppIcon :name="settingsStore.enableTiltGestures ? 'lucide:zap' : 'lucide:hand'" :size="15" />
+          <span class="hidden sm:inline">{{ settingsStore.enableTiltGestures ? 'Látigo' : 'Gestos' }}</span>
         </button>
 
         <button

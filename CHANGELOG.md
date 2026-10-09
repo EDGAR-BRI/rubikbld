@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.13.0] - 2026-10-09
+- 🚀 feat(study): implementar control por giroscopio estilo latigo activo solo tras voltear
+
 ## [0.12.0] - 2026-10-09
 - 🚀 feat(study): optimizar rendimiento en movil, control por inclinacion y evitar fuga de imagen
 
