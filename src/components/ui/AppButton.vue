@@ -3,7 +3,7 @@ import AppIcon from './AppIcon.vue'
 
 withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'outline'
+    variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'ghost' | 'outline'
     size?: 'sm' | 'md' | 'lg' | 'icon'
     icon?: string
     iconPosition?: 'left' | 'right'
@@ -37,6 +37,8 @@ const variantClasses: Record<string, string> = {
     'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 active:bg-emerald-700',
   danger:
     'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 active:bg-rose-700',
+  warning:
+    'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-600/20 active:bg-amber-700',
   ghost:
     'bg-transparent hover:bg-dark-800/60 text-slate-300 hover:text-white',
   outline:

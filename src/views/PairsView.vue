@@ -3,8 +3,10 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePairsStore } from '@/stores/usePairsStore'
 import type { PairItem, PairUsage } from '@/models/pair'
 import { cleanPairLetters } from '@/services/pairSearch'
+import { showConfirm, showSuccessToast } from '@/utils/alerts'
 import AppHeader from '@/components/ui/AppHeader.vue'
 import AppInput from '@/components/ui/AppInput.vue'
+import AppButton from '@/components/ui/AppButton.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import PairGrid from '@/components/matrix/PairGrid.vue'
@@ -16,6 +18,106 @@ const pairsStore = usePairsStore()
 const viewMode = ref<'list' | 'matrix'>('list')
 const editingPair = ref<PairItem | null>(null)
 const showModal = ref(false)
+
+// Modo de selección múltiple para acciones en lote (archivar / desarchivar)
+const isSelectMode = ref(false)
+const selectedPairIds = ref<Set<string>>(new Set())
+
+function toggleSelectMode() {
+  isSelectMode.value = !isSelectMode.value
+  if (!isSelectMode.value) {
+    selectedPairIds.value.clear()
+  } else if (viewMode.value !== 'list') {
+    viewMode.value = 'list'
+  }
+}
+
+function toggleSelectPair(id: string) {
+  const next = new Set(selectedPairIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  selectedPairIds.value = next
+}
+
+const isAllSelected = computed(() => {
+  if (displayedPairs.value.length === 0) return false
+  return displayedPairs.value.every(p => selectedPairIds.value.has(p.id))
+})
+
+function toggleSelectAll() {
+  const next = new Set(selectedPairIds.value)
+  if (isAllSelected.value) {
+    displayedPairs.value.forEach(p => next.delete(p.id))
+  } else {
+    displayedPairs.value.forEach(p => next.add(p.id))
+  }
+  selectedPairIds.value = next
+}
+
+const selectedArchivedCount = computed(() => {
+  let count = 0
+  for (const id of selectedPairIds.value) {
+    const pair = pairsStore.getPairById(id)
+    if (pair?.isArchived) count++
+  }
+  return count
+})
+
+const selectedActiveCount = computed(() => {
+  return selectedPairIds.value.size - selectedArchivedCount.value
+})
+
+async function handleBatchArchive(archive: boolean) {
+  const ids = Array.from(selectedPairIds.value)
+  if (ids.length === 0) return
+
+  const actionName = archive ? 'archivar' : 'desarchivar'
+  const count = ids.length
+  const confirmText = archive
+    ? `¿Archivar ${count} pares seleccionados?`
+    : `¿Desarchivar ${count} pares seleccionados?`
+  const confirmDesc = archive
+    ? 'Estos pares se ocultarán de tus sesiones de repaso SRS diario. Sus palabras, notas e imágenes se conservarán intactas.'
+    : 'Estos pares volverán a estar activos en tus sesiones de repaso SRS.'
+
+  const res = await showConfirm(
+    confirmText,
+    confirmDesc,
+    `Sí, ${actionName}`,
+    'Cancelar',
+  )
+  if (!res.isConfirmed) return
+
+  await pairsStore.archivePairs(ids, archive)
+  showSuccessToast(
+    archive ? `${count} pares archivados` : `${count} pares desarchivados`,
+    archive
+      ? 'Se marcaron como archivados en el sistema'
+      : 'Se restablecieron como activos en tus repasos',
+  )
+
+  selectedPairIds.value.clear()
+  isSelectMode.value = false
+}
+
+function handleCardClick(item: PairItem) {
+  if (isSelectMode.value) {
+    toggleSelectPair(item.id)
+  } else {
+    onOpenEdit(item)
+  }
+}
+
+function handleCardContextMenu(item: PairItem, event: MouseEvent) {
+  event.preventDefault()
+  if (!isSelectMode.value) {
+    isSelectMode.value = true
+  }
+  toggleSelectPair(item.id)
+}
 
 // Paginación incremental para rendimiento instantáneo (< 10ms render)
 const PAGE_SIZE = 50
@@ -115,8 +217,6 @@ function selectLetter(letter: string | null) {
   pairsStore.selectedLetter = pairsStore.selectedLetter === letter ? null : letter
 }
 
-import { showConfirm, showSuccessToast } from '@/utils/alerts'
-
 const usageFilters = [
   { value: 'all', label: 'Todos' },
   { value: 'both', label: 'Ambas' },
@@ -127,6 +227,7 @@ const usageFilters = [
 const statusFilters = computed(() => {
   const list = [
     { value: 'all', label: 'Todos' },
+    { value: 'active', label: 'Activos' },
     { value: 'completed', label: 'Listos' },
     { value: 'missing', label: 'Vacíos' },
     {
@@ -225,6 +326,22 @@ function onListScroll(event: Event) {
   <div class="flex-1 flex flex-col h-full overflow-hidden bg-dark-950">
     <AppHeader title="Gestor de Pares">
       <template #actions>
+        <!-- Botón Selección en Lote -->
+        <button
+          type="button"
+          :class="[
+            'h-[30px] px-2.5 flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95 cursor-pointer',
+            isSelectMode
+              ? 'bg-green-600 text-white shadow-sm'
+              : 'bg-dark-900 border border-dark-700/80 text-slate-300 hover:text-white',
+          ]"
+          :title="isSelectMode ? 'Cancelar selección' : 'Seleccionar pares en lote'"
+          @click="toggleSelectMode"
+        >
+          <AppIcon :name="isSelectMode ? 'lucide:x' : 'lucide:list-checks'" :size="14" />
+          <span>{{ isSelectMode ? 'Cancelar' : 'Seleccionar' }}</span>
+        </button>
+
         <!-- Selector Lista / Matriz -->
         <div class="h-[30px] inline-flex items-center bg-dark-900 border border-dark-700/80 p-0.5 rounded-lg gap-0.5">
           <button
@@ -539,21 +656,47 @@ function onListScroll(event: Event) {
             v-for="item in displayedPairs"
             :key="item.id"
             :class="[
-              'flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer active:scale-[0.99] relative overflow-hidden',
-              isExactPairMatch(item)
-                ? 'bg-gradient-to-r from-green-950/40 via-dark-900 to-dark-900 border-2 border-green-500/80 shadow-lg shadow-green-500/10 ring-1 ring-green-500/30'
-                : 'bg-dark-900/90 border border-dark-800 hover:border-dark-700',
+              'flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer active:scale-[0.99] relative overflow-hidden select-none',
+              selectedPairIds.has(item.id)
+                ? 'bg-green-950/40 border-2 border-green-500 shadow-lg shadow-green-500/10 ring-1 ring-green-500/40'
+                : isExactPairMatch(item)
+                  ? 'bg-gradient-to-r from-green-950/40 via-dark-900 to-dark-900 border-2 border-green-500/80 shadow-lg shadow-green-500/10 ring-1 ring-green-500/30'
+                  : item.isArchived
+                    ? 'bg-dark-900/60 border border-amber-500/25 hover:border-amber-500/50'
+                    : 'bg-dark-900/90 border border-dark-800 hover:border-dark-700',
             ]"
-            @click="onOpenEdit(item)"
+            @click="handleCardClick(item)"
+            @contextmenu="handleCardContextMenu(item, $event)"
           >
             <div class="flex items-center gap-3 min-w-0">
+              <!-- Checkbox en modo selección -->
+              <div
+                v-if="isSelectMode"
+                class="shrink-0 flex items-center justify-center transition-all"
+              >
+                <div
+                  :class="[
+                    'w-5 h-5 rounded-md border flex items-center justify-center transition-all',
+                    selectedPairIds.has(item.id)
+                      ? 'bg-green-500 border-green-500 text-white shadow-sm'
+                      : 'border-dark-600 bg-dark-950/80 text-transparent hover:border-dark-400',
+                  ]"
+                >
+                  <AppIcon name="lucide:check" :size="13" class-name="stroke-[3]" />
+                </div>
+              </div>
+
               <!-- Letra del Par -->
               <div
                 :class="[
                   'w-12 h-12 rounded-xl flex items-center justify-center font-mono font-black text-lg shrink-0 shadow-inner transition-colors',
-                  isExactPairMatch(item)
+                  selectedPairIds.has(item.id)
                     ? 'bg-green-600 text-white shadow-green-500/30 ring-1 ring-white/20'
-                    : 'bg-dark-950 border border-dark-700/80 text-white',
+                    : isExactPairMatch(item)
+                      ? 'bg-green-600 text-white shadow-green-500/30 ring-1 ring-white/20'
+                      : item.isArchived
+                        ? 'bg-dark-950 border border-amber-500/40 text-amber-200'
+                        : 'bg-dark-950 border border-dark-700/80 text-white',
                 ]"
               >
                 {{ item.pair }}
@@ -600,13 +743,17 @@ function onListScroll(event: Event) {
                   >
                     {{ item.usage === 'both' ? 'Ambas' : item.usage === 'corner' ? 'Solo Esquinas' : 'Solo Aristas' }}
                   </AppBadge>
+
+                  <!-- Badge Destacado de Par Archivado -->
                   <span
                     v-if="item.isArchived"
-                    class="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center gap-1"
+                    class="px-2 py-0.5 rounded-md text-[10px] font-bold border bg-amber-500/15 border-amber-500/40 text-amber-300 flex items-center gap-1 shrink-0"
+                    title="Esta tarjeta está archivada (no se estudia en SRS)"
                   >
-                    <AppIcon name="lucide:archive" :size="10" />
+                    <AppIcon name="lucide:archive" :size="11" />
                     <span>Archivado</span>
                   </span>
+
                   <span
                     v-if="pairsStore.isPairOutsideScheme(item.id)"
                     class="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-rose-500/10 border-rose-500/30 text-rose-400 flex items-center gap-1"
@@ -621,9 +768,13 @@ function onListScroll(event: Event) {
               </div>
             </div>
 
-            <!-- Botón editar -->
-            <div class="text-slate-400 p-2 hover:text-white">
-              <AppIcon name="lucide:chevron-right" :size="18" />
+            <!-- Botón editar o indicador de selección -->
+            <div class="text-slate-400 p-2 hover:text-white shrink-0">
+              <AppIcon
+                :name="isSelectMode ? (selectedPairIds.has(item.id) ? 'lucide:check-circle-2' : 'lucide:circle') : 'lucide:chevron-right'"
+                :size="18"
+                :class-name="isSelectMode && selectedPairIds.has(item.id) ? 'text-green-400' : ''"
+              />
             </div>
           </div>
 
@@ -688,6 +839,70 @@ function onListScroll(event: Event) {
       </div>
     </template>
   </div>
+
+  <!-- Barra de acciones en lote fija en la parte inferior cuando el modo selección está activo -->
+  <Transition
+    enter-active-class="transition-all duration-300 ease-out"
+    enter-from-class="opacity-0 translate-y-8"
+    enter-to-class="opacity-100 translate-y-0"
+    leave-active-class="transition-all duration-200 ease-in"
+    leave-from-class="opacity-100 translate-y-0"
+    leave-to-class="opacity-0 translate-y-8"
+  >
+    <div
+      v-if="isSelectMode"
+      class="shrink-0 px-3.5 py-2.5 sm:px-6 bg-dark-900/95 border-t border-dark-700/80 backdrop-blur-md shadow-2xl flex flex-wrap items-center justify-between gap-2.5 z-30"
+    >
+      <!-- Lado izquierdo: Contador y selección rápida -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="font-mono font-bold text-xs text-white bg-dark-800 border border-dark-700 px-2.5 py-1 rounded-xl shrink-0">
+          {{ selectedPairIds.size }} seleccionados
+        </span>
+        <button
+          type="button"
+          class="text-xs text-green-400 hover:text-green-300 underline font-medium truncate cursor-pointer"
+          @click="toggleSelectAll"
+        >
+          {{ isAllSelected ? 'Deseleccionar todos' : 'Seleccionar visibles' }}
+        </button>
+      </div>
+
+      <!-- Lado derecho: Botones de archivar / desarchivar en lote -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Botón Archivar -->
+        <AppButton
+          variant="warning"
+          size="sm"
+          icon="lucide:archive"
+          :disabled="selectedPairIds.size === 0"
+          @click="handleBatchArchive(true)"
+        >
+          Archivar ({{ selectedActiveCount > 0 ? selectedActiveCount : selectedPairIds.size }})
+        </AppButton>
+
+        <!-- Botón Desarchivar (si hay seleccionados archivados) -->
+        <AppButton
+          v-if="selectedArchivedCount > 0"
+          variant="secondary"
+          size="sm"
+          icon="lucide:archive-restore"
+          @click="handleBatchArchive(false)"
+        >
+          Desarchivar ({{ selectedArchivedCount }})
+        </AppButton>
+
+        <!-- Cerrar modo selección -->
+        <button
+          type="button"
+          class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-dark-800 transition-colors cursor-pointer"
+          title="Cerrar selección"
+          @click="toggleSelectMode"
+        >
+          <AppIcon name="lucide:x" :size="18" />
+        </button>
+      </div>
+    </div>
+  </Transition>
 
   <!-- Modal de edición -->
   <PairEditModal

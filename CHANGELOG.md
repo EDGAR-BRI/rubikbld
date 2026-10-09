@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.16.0] - 2026-10-09
+- 🚀 feat(pairs): seleccion multiple, archivo en lote y badge de archivados
+
 ## [0.15.0] - 2026-10-09
 - 🚀 feat(pairs): anadir busqueda avanzada y gestion de pares fuera de esquema y archivados
 
