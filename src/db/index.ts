@@ -114,6 +114,7 @@ export class RubikBldDatabase extends Dexie {
           id: pair.id,
           pair: pair.pair,
           usage: pair.usage,
+          isArchived: prevCard.isArchived ?? false,
         })
       } else {
         cardsToSave.push({
@@ -127,6 +128,7 @@ export class RubikBldDatabase extends Dexie {
           stepIndex: 0,
           repetitions: 0,
           lapses: 0,
+          isArchived: false,
           createdAt: now,
         })
       }

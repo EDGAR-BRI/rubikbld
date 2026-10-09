@@ -76,7 +76,8 @@ export const useReviewStore = defineStore('review', () => {
           .map(p => p.id),
       )
 
-      let candidateCards = allCards.filter(c => validPairIds.has(c.id))
+      // Excluir tarjetas que no cumplan requisitos o que estén archivadas
+      let candidateCards = allCards.filter(c => validPairIds.has(c.id) && !c.isArchived)
 
       if (filterType.value !== 'all') {
         candidateCards = candidateCards.filter(c =>

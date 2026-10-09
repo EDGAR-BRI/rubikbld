@@ -94,6 +94,7 @@ async function loadSRSData() {
         stepIndex: 0,
         repetitions: 0,
         lapses: 0,
+        isArchived: false,
         createdAt: now,
       }
     }
@@ -312,6 +313,42 @@ async function onResetCard() {
   )
 }
 
+async function onToggleArchive() {
+  if (!props.pairItem || !srsCard.value) return
+
+  const willArchive = !srsCard.value.isArchived
+
+  if (willArchive) {
+    const result = await showConfirm(
+      `¿Archivar tarjeta ${props.pairItem.pair}?`,
+      'Esta tarjeta no volverá a aparecer en tus sesiones de estudio hasta que la desarchives. Tu palabra, imagen y progreso no se perderán.',
+      'Sí, archivar',
+      'Cancelar',
+    )
+    if (!result.isConfirmed) return
+  }
+
+  const updated: SRSCard = {
+    ...srsCard.value,
+    isArchived: willArchive,
+  }
+
+  await db.cards.put(updated)
+  srsCard.value = updated
+
+  if (reviewStore.currentCard?.id === updated.id) {
+    reviewStore.currentCard = updated
+  }
+
+  emit('cardUpdated', updated)
+  showSuccessToast(
+    willArchive ? `Tarjeta ${props.pairItem.pair} archivada` : `Tarjeta ${props.pairItem.pair} desarchivada`,
+    willArchive
+      ? 'No se mostrará más en tus sesiones de estudio'
+      : 'Volverá a aparecer en tus sesiones de repaso',
+  )
+}
+
 async function onMakeDueToday() {
   if (!props.pairItem || !srsCard.value) return
 
@@ -429,14 +466,25 @@ async function onSave() {
       <!-- ============================================== -->
       <template v-if="currentView === 'detail'">
         <!-- Fila de Uso y Letras -->
-        <div class="flex items-center gap-2">
-          <AppBadge
-            :variant="pairItem.usage === 'both' ? 'accent' : pairItem.usage === 'corner' ? 'warning' : 'success'"
+        <div class="flex items-center justify-between text-xs pb-1">
+          <div class="flex items-center gap-2">
+            <AppBadge
+              :variant="pairItem.usage === 'both' ? 'accent' : pairItem.usage === 'corner' ? 'warning' : 'success'"
+            >
+              {{ pairItem.usage === 'both' ? 'Ambas (Esquinas y Aristas)' : pairItem.usage === 'corner' ? 'Solo Esquinas' : 'Solo Aristas' }}
+            </AppBadge>
+            <span class="text-xs text-slate-400 font-mono">
+              Letras: {{ pairItem.firstLetter }} + {{ pairItem.secondLetter }}
+            </span>
+          </div>
+
+          <!-- Indicador si está archivada -->
+          <span
+            v-if="srsCard?.isArchived"
+            class="px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center gap-1"
           >
-            {{ pairItem.usage === 'both' ? 'Ambas (Esquinas y Aristas)' : pairItem.usage === 'corner' ? 'Solo Esquinas' : 'Solo Aristas' }}
-          </AppBadge>
-          <span class="text-xs text-slate-400 font-mono">
-            Letras: {{ pairItem.firstLetter }} + {{ pairItem.secondLetter }}
+            <AppIcon name="lucide:archive" :size="11" />
+            <span>Archivada</span>
           </span>
         </div>
 
@@ -476,13 +524,18 @@ async function onSave() {
           <div class="flex items-center gap-2.5 min-w-0">
             <div
               class="w-8 h-8 rounded-xl flex items-center justify-center border shrink-0"
-              :class="stateMeta.colorClass"
+              :class="srsCard?.isArchived ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : stateMeta.colorClass"
             >
-              <AppIcon name="lucide:brain" :size="16" />
+              <AppIcon :name="srsCard?.isArchived ? 'lucide:archive' : 'lucide:brain'" :size="16" />
             </div>
             <div class="text-left truncate">
-              <span class="font-bold text-slate-200">Repetición Espaciada</span>
-              <p class="text-slate-400 font-mono text-[11px] truncate mt-0.5">
+              <span class="font-bold text-slate-200">
+                {{ srsCard?.isArchived ? 'Tarjeta Archivada' : 'Repetición Espaciada' }}
+              </span>
+              <p v-if="srsCard?.isArchived" class="text-amber-400 font-medium text-[11px] truncate mt-0.5">
+                Oculta en sesiones de estudio
+              </p>
+              <p v-else class="text-slate-400 font-mono text-[11px] truncate mt-0.5">
                 {{ stateMeta.label }} • {{ srsCard?.repetitions || 0 }} repeticiones • {{ formattedInterval }}
               </p>
             </div>
@@ -499,6 +552,40 @@ async function onSave() {
       <!-- VISTA 2: CONTENIDO COMPLETO SRS                -->
       <!-- ============================================== -->
       <template v-else-if="currentView === 'srs'">
+        <!-- Botón único y claro de Retroceder -->
+        <div class="flex items-center justify-between pb-1 border-b border-dark-800/60">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-dark-950 border border-dark-800 hover:border-dark-700 text-xs font-semibold text-slate-300 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+            @click="currentView = 'detail'"
+          >
+            <AppIcon name="lucide:arrow-left" :size="15" />
+            <span>Retroceder</span>
+          </button>
+
+          <span class="text-xs font-mono text-slate-400">
+            Par: <strong class="text-white">{{ pairItem.pair }}</strong> ({{ pairItem.firstLetter }} + {{ pairItem.secondLetter }})
+          </span>
+        </div>
+
+        <!-- Banner de advertencia si la tarjeta está archivada -->
+        <div
+          v-if="srsCard?.isArchived"
+          class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs"
+        >
+          <div class="flex items-center gap-2 text-amber-400 font-medium min-w-0">
+            <AppIcon name="lucide:archive" :size="16" class-name="shrink-0" />
+            <span class="truncate">Tarjeta archivada: no aparece en tus repasos</span>
+          </div>
+          <button
+            type="button"
+            class="text-xs font-bold text-amber-300 hover:text-white underline cursor-pointer shrink-0"
+            @click="onToggleArchive"
+          >
+            Desarchivar
+          </button>
+        </div>
+
         <!-- Tarjeta de Estado y Vencimiento -->
         <div class="p-3.5 rounded-2xl bg-dark-950/90 border border-dark-800 flex flex-col gap-2.5">
           <div class="flex items-center justify-between gap-2">
@@ -659,6 +746,28 @@ async function onSave() {
             <AppIcon name="lucide:settings-2" :size="13" />
             <span>Acciones SRS</span>
           </span>
+
+          <!-- BOTÓN ARCHIVAR / DESARCHIVAR TARJETA -->
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-dark-900 border border-dark-800">
+            <div class="flex flex-col min-w-0 pr-1">
+              <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5 truncate">
+                <AppIcon :name="srsCard?.isArchived ? 'lucide:archive-restore' : 'lucide:archive'" :size="14" class-name="text-amber-400 shrink-0" />
+                {{ srsCard?.isArchived ? 'Desarchivar tarjeta' : 'Archivar tarjeta' }}
+              </span>
+              <span class="text-[10px] text-slate-400 truncate">
+                {{ srsCard?.isArchived ? 'Vuelve a incluirla en tus repasos' : 'No mostrar más hasta que la desarchives' }}
+              </span>
+            </div>
+            <AppButton
+              :variant="srsCard?.isArchived ? 'success' : 'secondary'"
+              size="sm"
+              :icon="srsCard?.isArchived ? 'lucide:archive-restore' : 'lucide:archive'"
+              class="shrink-0 text-xs font-semibold px-2.5 py-1.5"
+              @click="onToggleArchive"
+            >
+              {{ srsCard?.isArchived ? 'Desarchivar' : 'Archivar' }}
+            </AppButton>
+          </div>
 
           <!-- BOTÓN DESTACADO: REINICIAR TARJETA -->
           <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-rose-500/5 border border-rose-500/20">

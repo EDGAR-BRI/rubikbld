@@ -59,9 +59,23 @@ class GoogleDriveService {
   }
 
   /**
-   * Solicita inicio de sesión interactivo y token de acceso
+   * Establece manualmente el token de acceso (ej. restaurado desde almacenamiento)
    */
-  async requestAccessToken(): Promise<string> {
+  setAccessToken(token: string | null): void {
+    this.accessToken = token
+  }
+
+  /**
+   * Obtiene el token de acceso actual en memoria
+   */
+  getAccessToken(): string | null {
+    return this.accessToken
+  }
+
+  /**
+   * Solicita token de acceso OAuth2 (interactivo o silencioso)
+   */
+  async requestAccessToken(options?: { prompt?: string }): Promise<{ accessToken: string; expiresIn: number }> {
     return new Promise((resolve, reject) => {
       if (!this.tokenClient) {
         reject(new Error('El cliente de Google no ha sido inicializado con un Client ID'))
@@ -73,11 +87,19 @@ class GoogleDriveService {
           reject(new Error(resp.error_description || resp.error))
         } else {
           this.accessToken = resp.access_token
-          resolve(resp.access_token)
+          const expiresIn =
+            typeof resp.expires_in === 'number'
+              ? resp.expires_in
+              : parseInt(resp.expires_in, 10) || 3600
+          resolve({
+            accessToken: resp.access_token,
+            expiresIn,
+          })
         }
       }
 
-      this.tokenClient.requestAccessToken({ prompt: 'consent' })
+      const promptVal = options?.prompt !== undefined ? options.prompt : 'consent'
+      this.tokenClient.requestAccessToken({ prompt: promptVal })
     })
   }
 

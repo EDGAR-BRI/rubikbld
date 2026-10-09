@@ -20,6 +20,7 @@ export interface SRSCard {
   
   lastReviewed?: number
   createdAt: number
+  isArchived?: boolean // Si está archivada, se excluye de las sesiones de estudio
 }
 
 export type ReviewRating = 1 | 2 | 3 | 4 // 1: Again, 2: Hard, 3: Good, 4: Easy

@@ -197,6 +197,29 @@ export const showInfoToast = (title: string, text?: string, timer: number = 2500
 }
 
 /**
+ * Toast de advertencia / estado sin conexión compacto
+ */
+export const showWarningToast = (title: string, text?: string, timer: number = 3000) => {
+  return Swal.fire({
+    ...swalDark,
+    icon: 'warning',
+    title,
+    text,
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    showCloseButton: true,
+    timer,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      enableSwipeToDismiss(toast, true)
+      toast.onmouseenter = Swal.stopTimer
+      toast.onmouseleave = Swal.resumeTimer
+    },
+  })
+}
+
+/**
  * Confirmación modal interactiva general
  */
 export const showConfirm = (

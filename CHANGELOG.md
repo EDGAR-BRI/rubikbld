@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.11.0] - 2026-10-09
+- 🚀 feat(srs): anadir archivado de tarjetas y sincronizacion drive offline
+
 ## [0.10.2] - 2026-10-08
 - 🛠️ refactor(study): simplificar volteo de tarjeta y mostrar atajo espacio integrado
 
