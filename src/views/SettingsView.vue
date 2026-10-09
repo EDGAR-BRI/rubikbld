@@ -24,12 +24,17 @@ import AppUpdateModal from '@/components/ui/AppUpdateModal.vue'
 
 import { usePairsStore } from '@/stores/usePairsStore'
 import { useSchemeStore } from '@/stores/useSchemeStore'
+import { useReviewStore } from '@/stores/useReviewStore'
 import { db } from '@/db'
 
 const settingsStore = useSettingsStore()
 const pairsStore = usePairsStore()
 const schemeStore = useSchemeStore()
+const reviewStore = useReviewStore()
+void reviewStore
 const isSyncingPairs = ref(false)
+const isResettingProgress = ref(false)
+void isResettingProgress
 const { isInstalled, isIOS, promptInstall } = usePwaInstall()
 const { isOnline } = useNetwork()
 const {
@@ -101,6 +106,30 @@ async function handleDeleteOutsidePairs() {
   if (!res.isConfirmed) return
   await pairsStore.deleteAllOutsideScheme()
   showSuccessToast('Pares eliminados', `Se eliminaron ${count} pares del sistema`)
+}
+
+async function handleResetAllMemorization() {
+  const result = await showConfirm(
+    '¿Reiniciar la memorización de todos los pares?',
+    'Todas tus tarjetas SRS volverán al estado «Nueva» con 0 repeticiones e intervalo inicial. Tu lista de palabras mnemotécnicas, imágenes, notas y pares se mantendrán 100% intactos.',
+    'Sí, reiniciar memorización',
+    'Cancelar',
+  )
+
+  if (!result.isConfirmed) return
+
+  isResettingProgress.value = true
+  try {
+    const count = await reviewStore.resetAllProgress()
+    showSuccessToast(
+      'Memorización reiniciada',
+      `Se restablecieron ${count} tarjetas al estado inicial. Tus palabras e imágenes están a salvo.`,
+    )
+  } catch (err: any) {
+    showErrorToast('Error al reiniciar', err?.message || 'No se pudo reiniciar la memorización')
+  } finally {
+    isResettingProgress.value = false
+  }
 }
 
 async function saveGoogleClientId() {
@@ -508,6 +537,30 @@ function openGithubUrl(url: string) {
               class="w-full accent-green-500 bg-dark-950 rounded-lg h-2 cursor-pointer"
               @change="settingsStore.saveSRSSettings(settingsStore.srsSettings)"
             />
+          </div>
+
+          <!-- Reiniciar Memorización SRS de todos los pares -->
+          <div class="pt-4 border-t border-dark-800 flex flex-col gap-2.5">
+            <div>
+              <span class="text-sm font-bold text-white flex items-center gap-1.5">
+                <AppIcon name="lucide:rotate-ccw" :size="15" class-name="text-rose-400" />
+                <span>Reiniciar memorización de todos los pares</span>
+              </span>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Vuelve todas las tarjetas al estado «Nueva» con 0 repasos para empezar de cero el estudio. Tus palabras mnemotécnicas, imágenes y notas se mantendrán 100% intactas.
+              </p>
+            </div>
+
+            <AppButton
+              variant="danger"
+              size="md"
+              icon="lucide:rotate-ccw"
+              :loading="isResettingProgress"
+              class="w-full justify-center"
+              @click="handleResetAllMemorization"
+            >
+              Reiniciar memorización de todos los pares
+            </AppButton>
           </div>
         </div>
       </div>

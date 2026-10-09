@@ -201,6 +201,20 @@ export const useReviewStore = defineStore('review', () => {
     nextCard()
   }
 
+  async function resetAllProgress(): Promise<number> {
+    const startingEase = settingsStore.srsSettings.startingEase || 2.5
+    const count = await db.resetAllCardsProgress(startingEase)
+    sessionStats.value = {
+      reviewedCount: 0,
+      againCount: 0,
+      hardCount: 0,
+      goodCount: 0,
+      easyCount: 0,
+    }
+    await loadReviewSession()
+    return count
+  }
+
   return {
     loading,
     filterType,
@@ -213,5 +227,6 @@ export const useReviewStore = defineStore('review', () => {
     loadReviewSession,
     flip,
     rate,
+    resetAllProgress,
   }
 })

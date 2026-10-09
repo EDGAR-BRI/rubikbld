@@ -210,6 +210,35 @@ export class RubikBldDatabase extends Dexie {
       }
     })
   }
+
+  /**
+   * Reinicia el progreso de memorización (SRS) de todas las tarjetas.
+   * Deja intactos los pares mnemotécnicos (palabras, imágenes, notas).
+   */
+  async resetAllCardsProgress(startingEase: number = 2.5): Promise<number> {
+    const now = Date.now()
+    let count = 0
+    await this.transaction('rw', this.cards, this.reviews, async () => {
+      const allCards = await this.cards.toArray()
+      count = allCards.length
+      const resetCards: SRSCard[] = allCards.map(c => ({
+        ...c,
+        state: 'new',
+        due: now,
+        interval: 0,
+        easeFactor: startingEase,
+        stepIndex: 0,
+        repetitions: 0,
+        lapses: 0,
+        lastReviewed: undefined,
+      }))
+      if (resetCards.length > 0) {
+        await this.cards.bulkPut(resetCards)
+      }
+      await this.reviews.clear()
+    })
+    return count
+  }
 }
 
 export const db = new RubikBldDatabase()
