@@ -136,6 +136,7 @@ export function mergeWithExistingPairs(
         usage: gen.usage,
         firstLetter: gen.firstLetter,
         secondLetter: gen.secondLetter,
+        isArchived: prev.isArchived ?? false,
       }
     }
 
@@ -148,6 +149,7 @@ export function mergeWithExistingPairs(
       word: '',
       image: undefined,
       notes: '',
+      isArchived: false,
       createdAt: now,
       updatedAt: now,
     }

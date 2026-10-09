@@ -11,6 +11,7 @@ export interface PairItem {
   word: string // Palabra mnemotécnica propia del usuario (ej: "Pijama")
   image?: string // Base64 DataURL comprimido o URL de imagen
   notes?: string // Descripción mnemotécnica o historia
+  isArchived?: boolean // Si está archivado, se excluye de la lista activa y sesiones SRS
   createdAt: number
   updatedAt: number
 }
@@ -23,4 +24,6 @@ export interface PairStats {
   bothCount: number
   cornerOnlyCount: number
   edgeOnlyCount: number
+  archivedCount: number
+  outsideSchemeCount: number
 }

@@ -23,12 +23,22 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'close'): void
   (e: 'saved', pair: PairItem): void
+  (e: 'deleted', pairId: string): void
   (e: 'cardUpdated', card: SRSCard): void
 }>()
 
 const pairsStore = usePairsStore()
 const reviewStore = useReviewStore()
 const settingsStore = useSettingsStore()
+
+const isOutsideScheme = computed(() => {
+  if (!props.pairItem) return false
+  return pairsStore.isPairOutsideScheme(props.pairItem.id)
+})
+
+const isArchived = computed(() => {
+  return !!props.pairItem?.isArchived || !!srsCard.value?.isArchived
+})
 
 // Navegación interna: 'detail' (formulario habitual) o 'srs' (métricas y acciones de repaso)
 const currentView = ref<'detail' | 'srs'>('detail')
@@ -313,6 +323,61 @@ async function onResetCard() {
   )
 }
 
+async function onTogglePairArchive() {
+  if (!props.pairItem) return
+
+  const willArchive = !isArchived.value
+
+  if (willArchive) {
+    const result = await showConfirm(
+      `¿Archivar par ${props.pairItem.pair}?`,
+      'El par no aparecerá en tus sesiones de estudio ni en la vista principal activa. Tu palabra, imagen y notas se conservarán.',
+      'Sí, archivar',
+      'Cancelar',
+    )
+    if (!result.isConfirmed) return
+  }
+
+  await pairsStore.setPairArchived(props.pairItem.id, willArchive)
+  if (srsCard.value) {
+    srsCard.value = {
+      ...srsCard.value,
+      isArchived: willArchive,
+    }
+  }
+
+  showSuccessToast(
+    willArchive ? `Par ${props.pairItem.pair} archivado` : `Par ${props.pairItem.pair} desarchivado`,
+    willArchive
+      ? 'Oculto de las listas activas y sesiones de repaso'
+      : 'Vuelve a estar activo en tu lista y repasos',
+  )
+}
+
+async function onDeletePair() {
+  if (!props.pairItem) return
+  const pairName = props.pairItem.pair
+  const pairId = props.pairItem.id
+
+  const result = await showConfirm(
+    `¿Eliminar par ${pairName}?`,
+    `Se eliminará definitivamente el par ${pairName}, su palabra, imagen y su tarjeta de repaso SRS. Esta acción no se puede deshacer.`,
+    'Sí, eliminar permanentemente',
+    'Cancelar',
+  )
+
+  if (!result.isConfirmed) return
+
+  await pairsStore.deletePair(pairId)
+  emit('deleted', pairId)
+  closeModal()
+
+  showSuccessToast(
+    `Par ${pairName} eliminado`,
+    'Eliminado de tu lista y base de datos',
+  )
+}
+
 async function onToggleArchive() {
   if (!props.pairItem || !srsCard.value) return
 
@@ -334,6 +399,7 @@ async function onToggleArchive() {
   }
 
   await db.cards.put(updated)
+  await pairsStore.setPairArchived(props.pairItem.id, willArchive)
   srsCard.value = updated
 
   if (reviewStore.currentCard?.id === updated.id) {
@@ -478,14 +544,37 @@ async function onSave() {
             </span>
           </div>
 
-          <!-- Indicador si está archivada -->
-          <span
-            v-if="srsCard?.isArchived"
-            class="px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center gap-1"
-          >
-            <AppIcon name="lucide:archive" :size="11" />
-            <span>Archivada</span>
-          </span>
+          <!-- Indicador si está archivada o fuera de esquema -->
+          <div class="flex items-center gap-1.5">
+            <span
+              v-if="isOutsideScheme"
+              class="px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-rose-500/10 border-rose-500/30 text-rose-400 flex items-center gap-1"
+            >
+              <AppIcon name="lucide:alert-circle" :size="11" />
+              <span>Fuera de esquema</span>
+            </span>
+            <span
+              v-if="isArchived"
+              class="px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center gap-1"
+            >
+              <AppIcon name="lucide:archive" :size="11" />
+              <span>Archivada</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Alerta si el par no pertenece al esquema actual -->
+        <div
+          v-if="isOutsideScheme"
+          class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200"
+        >
+          <AppIcon name="lucide:alert-triangle" :size="16" class-name="text-amber-400 shrink-0 mt-0.5" />
+          <div class="flex-1">
+            <p class="font-bold text-amber-300">Este par no pertenece a tu esquema actual</p>
+            <p class="text-[11px] text-amber-400/80 mt-0.5 leading-relaxed">
+              Las letras de este par no están presentes en tu cubo o corresponden al buffer. Puedes archivarlo para ocultarlo o eliminarlo permanentemente.
+            </p>
+          </div>
         </div>
 
         <!-- Palabra mnemotécnica -->
@@ -513,6 +602,28 @@ async function onSave() {
             placeholder="Ej: Imagina ponerte el pijama al revés..."
             class="w-full bg-dark-900 border border-dark-700 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none"
           />
+        </div>
+
+        <!-- Acciones del Par (Archivar / Eliminar) -->
+        <div class="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-dark-950/80 border border-dark-800">
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            :class="isArchived ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25' : 'bg-dark-900 border-dark-700 text-slate-300 hover:text-white hover:bg-dark-850'"
+            @click="onTogglePairArchive"
+          >
+            <AppIcon :name="isArchived ? 'lucide:archive-restore' : 'lucide:archive'" :size="14" />
+            <span>{{ isArchived ? 'Desarchivar par' : 'Archivar par' }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/25 hover:border-rose-500/40 text-rose-400 hover:text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            @click="onDeletePair"
+          >
+            <AppIcon name="lucide:trash-2" :size="14" />
+            <span>Eliminar par</span>
+          </button>
         </div>
 
         <!-- Tarjeta para ir a Ver SRS -->

@@ -33,6 +33,15 @@ export class RubikBldDatabase extends Dexie {
       reviews: '++id, cardId, pair, rating, timestamp',
       settings: '&key',
     })
+
+    // Versión 3: Soporte para archivar pares y tarjetas (isArchived indexado)
+    this.version(3).stores({
+      schemes: '&id, name, gridSize',
+      pairs: '&id, pair, usage, firstLetter, secondLetter, word, isArchived, updatedAt',
+      cards: '&id, pair, usage, state, due, interval, isArchived',
+      reviews: '++id, cardId, pair, rating, timestamp',
+      settings: '&key',
+    })
   }
 
   /**
@@ -114,7 +123,7 @@ export class RubikBldDatabase extends Dexie {
           id: pair.id,
           pair: pair.pair,
           usage: pair.usage,
-          isArchived: prevCard.isArchived ?? false,
+          isArchived: pair.isArchived ?? prevCard.isArchived ?? false,
         })
       } else {
         cardsToSave.push({
@@ -128,7 +137,7 @@ export class RubikBldDatabase extends Dexie {
           stepIndex: 0,
           repetitions: 0,
           lapses: 0,
-          isArchived: false,
+          isArchived: pair.isArchived ?? false,
           createdAt: now,
         })
       }
@@ -137,6 +146,69 @@ export class RubikBldDatabase extends Dexie {
     if (cardsToSave.length > 0) {
       await this.cards.bulkPut(cardsToSave)
     }
+  }
+
+  /**
+   * Elimina un par y su tarjeta SRS asociada de la base de datos
+   */
+  async deletePair(pairId: string): Promise<void> {
+    await this.transaction('rw', this.pairs, this.cards, this.reviews, async () => {
+      await this.pairs.delete(pairId)
+      await this.cards.delete(pairId)
+      await this.reviews.where('cardId').equals(pairId).delete()
+    })
+  }
+
+  /**
+   * Elimina un conjunto de pares y sus tarjetas SRS asociadas en lote
+   */
+  async deletePairs(pairIds: string[]): Promise<void> {
+    if (!pairIds.length) return
+    await this.transaction('rw', this.pairs, this.cards, this.reviews, async () => {
+      await this.pairs.bulkDelete(pairIds)
+      await this.cards.bulkDelete(pairIds)
+      for (const id of pairIds) {
+        await this.reviews.where('cardId').equals(id).delete()
+      }
+    })
+  }
+
+  /**
+   * Archiva o desarchiva un conjunto de pares y sus tarjetas SRS correspondientes
+   */
+  async setPairsArchived(pairIds: string[], isArchived: boolean): Promise<void> {
+    if (!pairIds.length) return
+    const now = Date.now()
+    await this.transaction('rw', this.pairs, this.cards, async () => {
+      const pairsList = await this.pairs.bulkGet(pairIds)
+      const updatedPairs: PairItem[] = []
+      for (const p of pairsList) {
+        if (p) {
+          updatedPairs.push({
+            ...p,
+            isArchived,
+            updatedAt: now,
+          })
+        }
+      }
+      if (updatedPairs.length > 0) {
+        await this.pairs.bulkPut(updatedPairs)
+      }
+
+      const cardsList = await this.cards.bulkGet(pairIds)
+      const updatedCards: SRSCard[] = []
+      for (const c of cardsList) {
+        if (c) {
+          updatedCards.push({
+            ...c,
+            isArchived,
+          })
+        }
+      }
+      if (updatedCards.length > 0) {
+        await this.cards.bulkPut(updatedCards)
+      }
+    })
   }
 }
 

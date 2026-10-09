@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.15.0] - 2026-10-09
+- 🚀 feat(pairs): anadir busqueda avanzada y gestion de pares fuera de esquema y archivados
+
 ## [0.14.1] - 2026-10-09
 - ⚡ perf(ui): optimizar rubik loader 3d reduciendo caras y sombras para moviles
 

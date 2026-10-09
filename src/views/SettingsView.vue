@@ -22,7 +22,14 @@ import { useNetwork } from '@vueuse/core'
 import { APP_VERSION } from '@/config/version'
 import AppUpdateModal from '@/components/ui/AppUpdateModal.vue'
 
+import { usePairsStore } from '@/stores/usePairsStore'
+import { useSchemeStore } from '@/stores/useSchemeStore'
+import { db } from '@/db'
+
 const settingsStore = useSettingsStore()
+const pairsStore = usePairsStore()
+const schemeStore = useSchemeStore()
+const isSyncingPairs = ref(false)
 const { isInstalled, isIOS, promptInstall } = usePwaInstall()
 const { isOnline } = useNetwork()
 const {
@@ -45,11 +52,56 @@ const jsonStatusMsg = ref<string | null>(null)
 
 onMounted(async () => {
   await settingsStore.loadSettings()
+  await pairsStore.loadPairs()
+  await schemeStore.loadScheme()
   clientIdInput.value = settingsStore.googleClientId
   if (!settingsStore.googleClientId) {
     showManualClientId.value = true
   }
 })
+
+async function handleSyncPairs() {
+  isSyncingPairs.value = true
+  try {
+    await db.syncPairsWithScheme(schemeStore.currentScheme)
+    await pairsStore.loadPairs(true)
+    showSuccessToast('Pares sincronizados', 'Tu base de datos se ha actualizado con el esquema actual del cubo')
+  } catch (err: any) {
+    showErrorToast('Error al sincronizar', err?.message || 'No se pudieron sincronizar los pares')
+  } finally {
+    isSyncingPairs.value = false
+  }
+}
+
+async function handleArchiveOutsidePairs() {
+  const count = pairsStore.pairsOutsideScheme.length
+  if (count === 0) return
+  const letters = pairsStore.outsideSchemeLetters.join(', ')
+  const res = await showConfirm(
+    `¿Archivar ${count} pares fuera de esquema?`,
+    `Estos pares (letras: ${letters}) se ocultarán de tus listas activas y no aparecerán en repasos.`,
+    `Sí, archivar ${count} pares`,
+    'Cancelar',
+  )
+  if (!res.isConfirmed) return
+  await pairsStore.archiveAllOutsideScheme()
+  showSuccessToast('Pares archivados', `Se archivaron ${count} pares correctamente`)
+}
+
+async function handleDeleteOutsidePairs() {
+  const count = pairsStore.pairsOutsideScheme.length
+  if (count === 0) return
+  const letters = pairsStore.outsideSchemeLetters.join(', ')
+  const res = await showConfirm(
+    `¿Eliminar definitivamente ${count} pares fuera de esquema?`,
+    `Se borrarán permanentemente estos ${count} pares (letras: ${letters}) y sus tarjetas. Esta acción no se puede revertir.`,
+    `Sí, eliminar definitivamente`,
+    'Cancelar',
+  )
+  if (!res.isConfirmed) return
+  await pairsStore.deleteAllOutsideScheme()
+  showSuccessToast('Pares eliminados', `Se eliminaron ${count} pares del sistema`)
+}
 
 async function saveGoogleClientId() {
   await settingsStore.saveGoogleClientId(clientIdInput.value)
@@ -764,6 +816,86 @@ function openGithubUrl(url: string) {
           class="hidden"
           @change="onJsonFileSelected"
         />
+      </div>
+
+      <!-- SECCIÓN 3.5: Esquema y Limpieza de Pares -->
+      <div class="bg-dark-900 border border-dark-800 rounded-3xl p-5 shadow-xl">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <AppIcon name="lucide:layers" :size="20" />
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white">Limpieza y Esquema de Pares</h2>
+            <p class="text-xs text-slate-400">Depuración de pares obsoletos y control de archivo</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3 text-xs">
+          <div class="grid grid-cols-2 gap-2 text-slate-300">
+            <div class="p-2.5 rounded-xl bg-dark-950 border border-dark-800 flex flex-col">
+              <span class="text-[10px] text-slate-500 uppercase font-semibold">Total Pares</span>
+              <span class="font-mono font-bold text-sm text-white mt-0.5">{{ pairsStore.pairs.length }}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-dark-950 border border-dark-800 flex flex-col">
+              <span class="text-[10px] text-slate-500 uppercase font-semibold">Archivados</span>
+              <span class="font-mono font-bold text-sm text-amber-400 mt-0.5">{{ pairsStore.stats.archivedCount }}</span>
+            </div>
+          </div>
+
+          <!-- Si hay pares fuera de esquema -->
+          <div
+            v-if="pairsStore.pairsOutsideScheme.length > 0"
+            class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col gap-2"
+          >
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-amber-300 flex items-center gap-1.5">
+                <AppIcon name="lucide:alert-triangle" :size="14" />
+                <span>{{ pairsStore.pairsOutsideScheme.length }} pares fuera de esquema</span>
+              </span>
+              <span class="text-[10px] font-mono text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">
+                {{ pairsStore.outsideSchemeLetters.join(', ') }}
+              </span>
+            </div>
+            <p class="text-[11px] text-amber-300/80 leading-relaxed">
+              Estos pares contienen letras que ya no forman parte de tu cubo. Puedes archivarlos para ocultarlos o borrarlos definitivamente.
+            </p>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                class="py-1.5 px-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold border border-amber-500/30 text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                @click="handleArchiveOutsidePairs"
+              >
+                <AppIcon name="lucide:archive" :size="13" />
+                <span>Archivar ({{ pairsStore.pairsOutsideScheme.length }})</span>
+              </button>
+              <button
+                type="button"
+                class="py-1.5 px-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 font-semibold border border-rose-500/30 text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                @click="handleDeleteOutsidePairs"
+              >
+                <AppIcon name="lucide:trash-2" :size="13" />
+                <span>Eliminar ({{ pairsStore.pairsOutsideScheme.length }})</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="p-2.5 rounded-xl bg-dark-950/60 border border-dark-800 text-[11px] text-slate-400 flex items-center gap-2">
+            <AppIcon name="lucide:check-circle-2" :size="14" class-name="text-green-400 shrink-0" />
+            <span>Todos tus pares coinciden con el esquema actual del cubo.</span>
+          </div>
+
+          <!-- Botón sincronizar pares -->
+          <AppButton
+            variant="secondary"
+            size="md"
+            icon="lucide:refresh-cw"
+            :loading="isSyncingPairs"
+            class="w-full justify-center mt-1"
+            @click="handleSyncPairs"
+          >
+            Sincronizar pares con el esquema activo
+          </AppButton>
+        </div>
       </div>
 
       <!-- SECCIÓN 4: Instalación de la Aplicación (PWA) -->

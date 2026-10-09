@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePairsStore } from '@/stores/usePairsStore'
 import type { PairItem, PairUsage } from '@/models/pair'
+import { cleanPairLetters } from '@/services/pairSearch'
 import AppHeader from '@/components/ui/AppHeader.vue'
 import AppInput from '@/components/ui/AppInput.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
@@ -17,16 +18,24 @@ const editingPair = ref<PairItem | null>(null)
 const showModal = ref(false)
 
 // Paginación incremental para rendimiento instantáneo (< 10ms render)
-const PAGE_SIZE = 40
+const PAGE_SIZE = 50
 const displayLimit = ref(PAGE_SIZE)
 const sentinelRef = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
+const isSearching = computed(() => !!pairsStore.searchQuery.trim())
+
+// Cuando hay una búsqueda activa, mostramos todos los resultados encontrados de inmediato
+// para que el usuario nunca sienta que el buscador "se limita" o queda incompleto
 const displayedPairs = computed(() => {
+  if (isSearching.value) {
+    return pairsStore.filteredPairs
+  }
   return pairsStore.filteredPairs.slice(0, displayLimit.value)
 })
 
 const hasMore = computed(() => {
+  if (isSearching.value) return false
   return displayLimit.value < pairsStore.filteredPairs.length
 })
 
@@ -35,6 +44,23 @@ function loadMore() {
     displayLimit.value += PAGE_SIZE
   }
 }
+
+function isExactPairMatch(item: PairItem): boolean {
+  const q = pairsStore.searchQuery.trim()
+  if (!q) return false
+  const clean = cleanPairLetters(q)
+  return clean.length > 0 && item.pair.toUpperCase() === clean
+}
+
+// Al escribir en el buscador, deseleccionar chip de letra para buscar libremente en todo el catálogo
+watch(
+  () => pairsStore.searchQuery,
+  (newVal) => {
+    if (newVal.trim() && pairsStore.selectedLetter) {
+      pairsStore.selectedLetter = null
+    }
+  },
+)
 
 // Reset de paginación al cambiar cualquier filtro
 watch(
@@ -89,12 +115,69 @@ function selectLetter(letter: string | null) {
   pairsStore.selectedLetter = pairsStore.selectedLetter === letter ? null : letter
 }
 
+import { showConfirm, showSuccessToast } from '@/utils/alerts'
+
 const usageFilters = [
   { value: 'all', label: 'Todos' },
   { value: 'both', label: 'Ambas' },
   { value: 'corner', label: 'Solo Esquinas' },
   { value: 'edge', label: 'Solo Aristas' },
 ] as const
+
+const statusFilters = computed(() => {
+  const list = [
+    { value: 'all', label: 'Todos' },
+    { value: 'completed', label: 'Listos' },
+    { value: 'missing', label: 'Vacíos' },
+    {
+      value: 'archived',
+      label: 'Archivados',
+      badge: pairsStore.stats.archivedCount > 0 ? pairsStore.stats.archivedCount : null,
+      badgeClass: 'bg-amber-500/20 text-amber-300',
+    },
+  ] as Array<{ value: any; label: string; badge?: number | null; badgeClass?: string }>
+
+  if (pairsStore.pairsOutsideScheme.length > 0) {
+    list.push({
+      value: 'outside_scheme',
+      label: 'Fuera de esquema',
+      badge: pairsStore.pairsOutsideScheme.length,
+      badgeClass: 'bg-rose-500/20 text-rose-300',
+    })
+  }
+
+  return list
+})
+
+async function confirmArchiveOutside() {
+  const count = pairsStore.pairsOutsideScheme.length
+  if (count === 0) return
+  const letters = pairsStore.outsideSchemeLetters.join(', ')
+  const res = await showConfirm(
+    `¿Archivar ${count} pares fuera de esquema?`,
+    `Estos pares (letras: ${letters}) se ocultarán de tu lista activa y no aparecerán en tus repasos SRS. Tus palabras e imágenes se conservarán.`,
+    `Sí, archivar ${count} pares`,
+    'Cancelar',
+  )
+  if (!res.isConfirmed) return
+  await pairsStore.archiveAllOutsideScheme()
+  showSuccessToast('Pares archivados', `Se archivaron ${count} pares correctamente`)
+}
+
+async function confirmDeleteOutside() {
+  const count = pairsStore.pairsOutsideScheme.length
+  if (count === 0) return
+  const letters = pairsStore.outsideSchemeLetters.join(', ')
+  const res = await showConfirm(
+    `¿Eliminar definitivamente ${count} pares fuera de esquema?`,
+    `Se borrarán permanentemente estos ${count} pares (letras: ${letters}), sus palabras y sus tarjetas SRS. Esta acción no se puede deshacer.`,
+    `Sí, eliminar definitivamente`,
+    'Cancelar',
+  )
+  if (!res.isConfirmed) return
+  await pairsStore.deleteAllOutsideScheme()
+  showSuccessToast('Pares eliminados', `Se eliminaron ${count} pares del sistema`)
+}
 
 const showFilters = ref(false)
 
@@ -130,6 +213,11 @@ function onListScroll(event: Event) {
     showFilters.value = false
   }
   lastScrollTop = currentScrollTop
+
+  // Carga continua de respaldo si el IntersectionObserver se retarda
+  if (hasMore.value && target.scrollTop + target.clientHeight >= target.scrollHeight - 350) {
+    loadMore()
+  }
 }
 </script>
 
@@ -203,6 +291,14 @@ function onListScroll(event: Event) {
             <span class="w-2 h-2 rounded-full bg-emerald-400" />
             {{ pairsStore.stats.edgeOnlyCount }} Solo Aristas
           </span>
+          <span v-if="pairsStore.stats.archivedCount > 0" class="flex items-center gap-1 font-medium text-amber-400">
+            <AppIcon name="lucide:archive" :size="12" />
+            {{ pairsStore.stats.archivedCount }} archivados
+          </span>
+          <span v-if="pairsStore.stats.outsideSchemeCount > 0" class="flex items-center gap-1 font-medium text-rose-400">
+            <AppIcon name="lucide:alert-triangle" :size="12" />
+            {{ pairsStore.stats.outsideSchemeCount }} fuera de esquema
+          </span>
           <span class="flex items-center gap-1 font-medium ml-auto">
             <AppIcon name="lucide:image" :size="12" class-name="text-green-400" />
             {{ pairsStore.stats.withImage }} con foto
@@ -219,7 +315,7 @@ function onListScroll(event: Event) {
         <div class="flex-1 min-w-0 transition-all duration-300">
           <AppInput
             v-model="pairsStore.searchQuery"
-            placeholder="Buscar par o palabra (ej: PJ, Pijama)..."
+            placeholder="Buscar par (ej: PJ, CA) o palabra..."
             icon="lucide:search"
             clearable
           />
@@ -293,21 +389,28 @@ function onListScroll(event: Event) {
               </button>
             </div>
 
-            <!-- Filtro de Estado (Completos / Vacíos) -->
+            <!-- Filtro de Estado (Completos, Vacíos, Archivados, Fuera de Esquema) -->
             <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-xl border border-dark-800 shrink-0">
               <button
-                v-for="st in (['all', 'completed', 'missing'] as const)"
-                :key="st"
+                v-for="st in statusFilters"
+                :key="st.value"
                 type="button"
                 :class="[
-                  'px-2 py-1 rounded-lg font-medium transition-colors',
-                  pairsStore.filterStatus === st
+                  'px-2 py-1 rounded-lg font-medium transition-colors text-xs flex items-center gap-1 shrink-0',
+                  pairsStore.filterStatus === st.value
                     ? 'bg-dark-700 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-200',
                 ]"
-                @click="pairsStore.filterStatus = st"
+                @click="pairsStore.filterStatus = st.value"
               >
-                {{ st === 'all' ? 'Todos' : st === 'completed' ? 'Listos' : 'Vacíos' }}
+                <span>{{ st.label }}</span>
+                <span
+                  v-if="st.badge"
+                  class="text-[9px] px-1 py-0.2 rounded-full font-mono font-bold"
+                  :class="st.badgeClass"
+                >
+                  {{ st.badge }}
+                </span>
               </button>
             </div>
           </div>
@@ -369,93 +472,211 @@ function onListScroll(event: Event) {
         <RubikLoader label="Cargando pares de letras..." />
       </div>
 
-      <!-- VISTA LISTA: Carga incremental fluida e instantánea en cuadrícula para Desktop -->
-      <div v-else-if="viewMode === 'list'" class="max-w-lg md:max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      <template v-else>
+        <!-- Banner de alerta si hay pares que no pertenecen al esquema actual -->
         <div
-          v-for="item in displayedPairs"
-          :key="item.id"
-          class="flex items-center justify-between p-3 rounded-2xl bg-dark-900/90 border border-dark-800 hover:border-dark-700 active:scale-[0.99] transition-all cursor-pointer"
-          @click="onOpenEdit(item)"
+          v-if="pairsStore.pairsOutsideScheme.length > 0 && pairsStore.filterStatus !== 'archived'"
+          class="max-w-lg md:max-w-6xl mx-auto w-full mb-3"
         >
-          <div class="flex items-center gap-3 min-w-0">
-            <!-- Letra del Par -->
-            <div
-              class="w-12 h-12 rounded-xl bg-dark-950 border border-dark-700/80 flex items-center justify-center font-mono font-black text-lg text-white shrink-0 shadow-inner"
-            >
-              {{ item.pair }}
-            </div>
-
-            <!-- Miniatura de imagen si existe -->
-            <div
-              v-if="item.image"
-              class="w-12 h-12 rounded-xl overflow-hidden bg-dark-950 border border-dark-800 shrink-0 flex items-center justify-center"
-            >
-              <img :src="item.image" class="w-full h-full object-cover" />
-            </div>
-
-            <!-- Detalles de texto -->
-            <div class="truncate">
-              <div class="flex items-center gap-2">
-                <span
-                  v-if="item.word"
-                  class="font-bold text-sm text-slate-100 truncate"
-                >
-                  {{ item.word }}
-                </span>
-                <span
-                  v-else
-                  class="text-xs text-slate-500 italic"
-                >
-                  (Sin palabra)
-                </span>
+          <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+            <div class="flex items-start gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                <AppIcon name="lucide:alert-triangle" :size="16" />
               </div>
-
-              <!-- Etiquetas de uso (Ambas, Solo Esquinas, Solo Aristas) -->
-              <div class="flex items-center gap-2 mt-1">
-                <AppBadge
-                  :variant="item.usage === 'both' ? 'accent' : item.usage === 'corner' ? 'warning' : 'success'"
-                  size="sm"
-                >
-                  {{ item.usage === 'both' ? 'Ambas' : item.usage === 'corner' ? 'Solo Esquinas' : 'Solo Aristas' }}
-                </AppBadge>
-                <span v-if="item.notes" class="text-[11px] text-slate-400 truncate max-w-[120px]">
-                  {{ item.notes }}
-                </span>
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h4 class="text-xs font-bold text-amber-200">
+                    {{ pairsStore.pairsOutsideScheme.length }} pares no pertenecen a tu esquema actual
+                  </h4>
+                  <span class="text-[10px] font-mono text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                    Letras: {{ pairsStore.outsideSchemeLetters.join(', ') }}
+                  </span>
+                </div>
+                <p class="text-[11px] text-amber-300/80 mt-1 leading-relaxed">
+                  Pares con letras que no existen en tus pegatinas del cubo (como {{ pairsStore.outsideSchemeLetters.slice(0, 3).join(', ') }}). Puedes archivarlos para ocultarlos o eliminarlos.
+                </p>
               </div>
             </div>
-          </div>
 
-          <!-- Botón editar -->
-          <div class="text-slate-400 p-2 hover:text-white">
-            <AppIcon name="lucide:chevron-right" :size="18" />
+            <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <button
+                type="button"
+                class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold border border-amber-500/30 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                @click="confirmArchiveOutside"
+              >
+                <AppIcon name="lucide:archive" :size="13" />
+                <span>Archivar ({{ pairsStore.pairsOutsideScheme.length }})</span>
+              </button>
+
+              <button
+                type="button"
+                class="px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold border border-rose-500/30 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                @click="confirmDeleteOutside"
+              >
+                <AppIcon name="lucide:trash-2" :size="13" />
+                <span>Eliminar ({{ pairsStore.pairsOutsideScheme.length }})</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Empty state si no hay resultados -->
+        <!-- Banner informativo si se está filtrando por archivados -->
         <div
-          v-if="pairsStore.filteredPairs.length === 0"
-          class="col-span-full py-12 text-center text-slate-500 text-xs"
+          v-if="pairsStore.filterStatus === 'archived'"
+          class="max-w-lg md:max-w-6xl mx-auto w-full mb-3"
         >
-          No se encontraron pares con estos filtros.
+          <div class="p-3 rounded-2xl bg-dark-900/90 border border-dark-800 flex items-center gap-2.5 text-xs text-slate-300">
+            <AppIcon name="lucide:archive" :size="16" class-name="text-amber-400 shrink-0" />
+            <span>
+              Mostrando <strong>{{ pairsStore.filteredPairs.length }}</strong> pares archivados. No se estudian en SRS ni aparecen en la lista activa. Toca cualquier par para desarchivarlo.
+            </span>
+          </div>
         </div>
 
-        <!-- Sentinel invisible para scroll infinito sin retrasos -->
-        <div ref="sentinelRef" class="col-span-full h-8 flex items-center justify-center">
-          <span
-            v-if="hasMore"
-            class="text-[11px] text-slate-500 cursor-pointer hover:text-slate-300 py-2"
-            @click="loadMore"
+        <!-- VISTA LISTA: Carga incremental fluida e instantánea en cuadrícula para Desktop -->
+        <div v-if="viewMode === 'list'" class="max-w-lg md:max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div
+            v-for="item in displayedPairs"
+            :key="item.id"
+            :class="[
+              'flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer active:scale-[0.99] relative overflow-hidden',
+              isExactPairMatch(item)
+                ? 'bg-gradient-to-r from-green-950/40 via-dark-900 to-dark-900 border-2 border-green-500/80 shadow-lg shadow-green-500/10 ring-1 ring-green-500/30'
+                : 'bg-dark-900/90 border border-dark-800 hover:border-dark-700',
+            ]"
+            @click="onOpenEdit(item)"
           >
-            Cargando más pares ({{ displayedPairs.length }} de {{ pairsStore.filteredPairs.length }})...
-          </span>
-          <span
-            v-else-if="pairsStore.filteredPairs.length > 0"
-            class="text-[10px] text-slate-600 py-2"
+            <div class="flex items-center gap-3 min-w-0">
+              <!-- Letra del Par -->
+              <div
+                :class="[
+                  'w-12 h-12 rounded-xl flex items-center justify-center font-mono font-black text-lg shrink-0 shadow-inner transition-colors',
+                  isExactPairMatch(item)
+                    ? 'bg-green-600 text-white shadow-green-500/30 ring-1 ring-white/20'
+                    : 'bg-dark-950 border border-dark-700/80 text-white',
+                ]"
+              >
+                {{ item.pair }}
+              </div>
+
+              <!-- Miniatura de imagen si existe -->
+              <div
+                v-if="item.image"
+                class="w-12 h-12 rounded-xl overflow-hidden bg-dark-950 border border-dark-800 shrink-0 flex items-center justify-center"
+              >
+                <img :src="item.image" class="w-full h-full object-cover" />
+              </div>
+
+              <!-- Detalles de texto -->
+              <div class="truncate">
+                <div class="flex items-center gap-2">
+                  <!-- Distintivo de coincidencia exacta con el par buscado -->
+                  <span
+                    v-if="isExactPairMatch(item)"
+                    class="text-[10px] font-bold text-green-300 bg-green-500/20 px-1.5 py-0.5 rounded border border-green-500/40 shrink-0"
+                  >
+                    Par exacto
+                  </span>
+
+                  <span
+                    v-if="item.word"
+                    class="font-bold text-sm text-slate-100 truncate"
+                  >
+                    {{ item.word }}
+                  </span>
+                  <span
+                    v-else
+                    class="text-xs text-slate-500 italic"
+                  >
+                    (Sin palabra)
+                  </span>
+                </div>
+
+                <!-- Etiquetas de uso y badges de estado -->
+                <div class="flex items-center gap-2 mt-1">
+                  <AppBadge
+                    :variant="item.usage === 'both' ? 'accent' : item.usage === 'corner' ? 'warning' : 'success'"
+                    size="sm"
+                  >
+                    {{ item.usage === 'both' ? 'Ambas' : item.usage === 'corner' ? 'Solo Esquinas' : 'Solo Aristas' }}
+                  </AppBadge>
+                  <span
+                    v-if="item.isArchived"
+                    class="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-amber-500/10 border-amber-500/30 text-amber-400 flex items-center gap-1"
+                  >
+                    <AppIcon name="lucide:archive" :size="10" />
+                    <span>Archivado</span>
+                  </span>
+                  <span
+                    v-if="pairsStore.isPairOutsideScheme(item.id)"
+                    class="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-rose-500/10 border-rose-500/30 text-rose-400 flex items-center gap-1"
+                  >
+                    <AppIcon name="lucide:alert-circle" :size="10" />
+                    <span>Fuera de esquema</span>
+                  </span>
+                  <span v-if="item.notes" class="text-[11px] text-slate-400 truncate max-w-[120px]">
+                    {{ item.notes }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón editar -->
+            <div class="text-slate-400 p-2 hover:text-white">
+              <AppIcon name="lucide:chevron-right" :size="18" />
+            </div>
+          </div>
+
+          <!-- Empty state si no hay resultados con opción de restablecer filtros -->
+          <div
+            v-if="pairsStore.filteredPairs.length === 0"
+            class="col-span-full py-12 flex flex-col items-center justify-center text-center gap-3 px-4"
           >
-            Mostrando todos los {{ pairsStore.filteredPairs.length }} pares
-          </span>
+            <div class="w-12 h-12 rounded-2xl bg-dark-900 border border-dark-800 flex items-center justify-center text-slate-500">
+              <AppIcon name="lucide:search-x" :size="24" />
+            </div>
+            <div class="flex flex-col gap-1 max-w-sm">
+              <p class="text-sm font-semibold text-slate-300">
+                No se encontraron pares
+              </p>
+              <p v-if="hasActiveFilters" class="text-xs text-slate-500">
+                Tienes filtros activos que pueden estar limitando los resultados.
+              </p>
+              <p v-else class="text-xs text-slate-500">
+                No hay coincidencias para "{{ pairsStore.searchQuery }}".
+              </p>
+            </div>
+            <AppButton
+              v-if="hasActiveFilters"
+              variant="outline"
+              size="sm"
+              icon="lucide:rotate-ccw"
+              @click="resetFilters"
+            >
+              Restablecer filtros y ver todos
+            </AppButton>
+          </div>
+
+          <!-- Contador de resultados o Sentinel para scroll infinito -->
+          <div v-if="!isSearching" ref="sentinelRef" class="col-span-full h-8 flex items-center justify-center">
+            <span
+              v-if="hasMore"
+              class="text-[11px] text-slate-500 cursor-pointer hover:text-slate-300 py-2"
+              @click="loadMore"
+            >
+              Cargando más pares ({{ displayedPairs.length }} de {{ pairsStore.filteredPairs.length }})...
+            </span>
+            <span
+              v-else-if="pairsStore.filteredPairs.length > 0"
+              class="text-[10px] text-slate-600 py-2"
+            >
+              Mostrando todos los {{ pairsStore.filteredPairs.length }} pares
+            </span>
+          </div>
+          <div v-else-if="pairsStore.filteredPairs.length > 0" class="col-span-full py-2 text-center text-[11px] text-slate-500 font-medium">
+            Mostrando {{ pairsStore.filteredPairs.length }} par{{ pairsStore.filteredPairs.length > 1 ? 'es encontrados' : ' encontrado' }}
+          </div>
         </div>
-      </div>
 
       <!-- VISTA MATRIZ -->
       <div v-else class="max-w-4xl md:max-w-6xl mx-auto w-full">
@@ -465,12 +686,14 @@ function onListScroll(event: Event) {
           @select="onOpenEdit"
         />
       </div>
-    </div>
-
-    <!-- Modal de edición -->
-    <PairEditModal
-      v-model="showModal"
-      :pair-item="editingPair"
-    />
+    </template>
   </div>
+
+  <!-- Modal de edición -->
+  <PairEditModal
+    v-model="showModal"
+    :pair-item="editingPair"
+    @deleted="() => editingPair = null"
+  />
+</div>
 </template>
