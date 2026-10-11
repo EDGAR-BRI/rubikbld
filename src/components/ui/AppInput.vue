@@ -27,6 +27,8 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
   (e: 'clear'): void
   (e: 'enter', event: KeyboardEvent): void
+  (e: 'focus', event: FocusEvent): void
+  (e: 'blur', event: FocusEvent): void
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
@@ -77,6 +79,8 @@ function onKeyDown(event: KeyboardEvent) {
     const target = event.target as HTMLInputElement
     emit('update:modelValue', target.value)
     emit('enter', event)
+  } else if (event.key === 'Escape' && props.clearable && props.modelValue) {
+    clear()
   }
 }
 
@@ -108,6 +112,8 @@ function clear() {
         class="w-full bg-transparent px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none disabled:opacity-50"
         @input="onInput"
         @keydown="onKeyDown"
+        @focus="emit('focus', $event)"
+        @blur="emit('blur', $event)"
       />
 
       <button

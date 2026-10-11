@@ -44,7 +44,22 @@ export function cleanPairLetters(query: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u0302\u0304-\u036f]/g, '')
     .normalize('NFC')
-    .replace(/[\s\-_,./\\:;+]+/g, '')
+    .replace(/[\s\-_,./\\:;+*~|]+/g, '')
+    .toUpperCase()
+    .trim()
+}
+
+/**
+ * Extrae el código del par en modo relajado (convierte Ñ en N)
+ * para usuarios que buscan desde teclados móviles sin letra Ñ física.
+ */
+export function cleanPairLettersRelaxed(query: string): string {
+  if (!query) return ''
+  return query
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC')
+    .replace(/[\s\-_,./\\:;+*~|]+/g, '')
     .toUpperCase()
     .trim()
 }
@@ -63,10 +78,12 @@ export function scorePairMatch(item: PairItem, query: string): number {
   if (!trimmed) return 1 // Si no hay query, todos son relevantes por igual
 
   const cleanQuery = cleanPairLetters(trimmed)
+  const cleanRelaxedQuery = cleanPairLettersRelaxed(trimmed)
   const normQuery = normalizeSearchText(trimmed)
   const relaxedQuery = normalizeRelaxedText(trimmed)
 
   const pairUpper = item.pair.toUpperCase()
+  const pairRelaxed = normalizeRelaxedText(item.pair).toUpperCase()
   const normWord = normalizeSearchText(item.word || '')
   const relaxedWord = normalizeRelaxedText(item.word || '')
   const normNotes = normalizeSearchText(item.notes || '')
@@ -81,15 +98,27 @@ export function scorePairMatch(item: PairItem, query: string): number {
     if (pairUpper === cleanQuery) {
       score += 150000
     }
+    // 1.1.b Coincidencia exacta relajada (ej: busca "NA" en teclado sin Ñ y el par es "ÑA")
+    else if (cleanRelaxedQuery.length > 0 && pairRelaxed === cleanRelaxedQuery) {
+      score += 120000
+    }
 
     // 1.2 El par empieza con la búsqueda (ej: busca "P", encuentra "PA", "PB"...)
     else if (pairUpper.startsWith(cleanQuery)) {
       score += 60000
     }
+    // 1.2.b El par empieza con la búsqueda relajada
+    else if (cleanRelaxedQuery.length > 0 && pairRelaxed.startsWith(cleanRelaxedQuery)) {
+      score += 50000
+    }
 
     // 1.3 El par contiene la búsqueda (ej: busca "J", encuentra "AJ", "BJ"...)
     else if (pairUpper.includes(cleanQuery)) {
       score += 25000
+    }
+    // 1.3.b El par contiene la búsqueda relajada
+    else if (cleanRelaxedQuery.length > 0 && pairRelaxed.includes(cleanRelaxedQuery)) {
+      score += 20000
     }
 
     // 1.4 Si el query son 2 tokens de letras, verificar par inverso o misma fila

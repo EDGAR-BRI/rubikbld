@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { usePairsStore } from '@/stores/usePairsStore'
 import type { PairItem, PairUsage } from '@/models/pair'
-import { cleanPairLetters } from '@/services/pairSearch'
+import {
+  cleanPairLetters,
+  cleanPairLettersRelaxed,
+  normalizeRelaxedText,
+} from '@/services/pairSearch'
 import { showConfirm, showSuccessToast } from '@/utils/alerts'
 import AppHeader from '@/components/ui/AppHeader.vue'
 import AppInput from '@/components/ui/AppInput.vue'
@@ -119,6 +123,40 @@ function handleCardContextMenu(item: PairItem, event: MouseEvent) {
   toggleSelectPair(item.id)
 }
 
+// Referencia al contenedor con scroll para reubicar al inicio al buscar o filtrar
+const scrollContainerRef = ref<HTMLElement | null>(null)
+const showScrollToTop = ref(false)
+
+function scrollToTop(smooth = false) {
+  const container = scrollContainerRef.value
+  if (container) {
+    if (smooth) {
+      container.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      container.scrollTop = 0
+    }
+  }
+  // Garantizar que tras actualizar el DOM el scroll quede fijado en la cima
+  nextTick(() => {
+    if (scrollContainerRef.value && !smooth) {
+      scrollContainerRef.value.scrollTop = 0
+    }
+  })
+}
+
+function clearSearch() {
+  pairsStore.searchQuery = ''
+  scrollToTop(false)
+}
+
+function onSearchFocus() {
+  // Si el usuario estaba abajo y enfoca el buscador para escribir,
+  // llevar el scroll al inicio para preparar la vista de resultados.
+  if (scrollContainerRef.value && scrollContainerRef.value.scrollTop > 50) {
+    scrollToTop(true)
+  }
+}
+
 // Paginación incremental para rendimiento instantáneo (< 10ms render)
 const PAGE_SIZE = 50
 const displayLimit = ref(PAGE_SIZE)
@@ -151,30 +189,43 @@ function isExactPairMatch(item: PairItem): boolean {
   const q = pairsStore.searchQuery.trim()
   if (!q) return false
   const clean = cleanPairLetters(q)
-  return clean.length > 0 && item.pair.toUpperCase() === clean
+  if (clean.length > 0 && item.pair.toUpperCase() === clean) return true
+  const cleanRelaxed = cleanPairLettersRelaxed(q)
+  return (
+    cleanRelaxed.length > 0 &&
+    normalizeRelaxedText(item.pair).toUpperCase() === cleanRelaxed
+  )
 }
 
+const hasExactMatch = computed(() => {
+  if (!isSearching.value || displayedPairs.value.length === 0) return false
+  return isExactPairMatch(displayedPairs.value[0])
+})
+
 // Al escribir en el buscador, deseleccionar chip de letra para buscar libremente en todo el catálogo
+// y RESETEAR el scroll al inicio para que el primer resultado quede visible de inmediato.
 watch(
   () => pairsStore.searchQuery,
   (newVal) => {
     if (newVal.trim() && pairsStore.selectedLetter) {
       pairsStore.selectedLetter = null
     }
+    // Llevar inmediatamente el scroll a la cima
+    scrollToTop(false)
   },
 )
 
-// Reset de paginación al cambiar cualquier filtro
+// Reset de paginación y scroll al cambiar cualquier filtro
 watch(
   [
     () => pairsStore.filterUsage,
     () => pairsStore.filterStatus,
-    () => pairsStore.searchQuery,
     () => pairsStore.selectedLetter,
     viewMode,
   ],
   () => {
     displayLimit.value = PAGE_SIZE
+    scrollToTop(false)
   },
 )
 
@@ -215,6 +266,7 @@ function onOpenEdit(pair: PairItem) {
 
 function selectLetter(letter: string | null) {
   pairsStore.selectedLetter = pairsStore.selectedLetter === letter ? null : letter
+  scrollToTop(false)
 }
 
 const usageFilters = [
@@ -302,12 +354,16 @@ function resetFilters() {
   pairsStore.filterUsage = 'all'
   pairsStore.filterStatus = 'all'
   pairsStore.selectedLetter = null
+  scrollToTop(false)
 }
 
 let lastScrollTop = 0
 function onListScroll(event: Event) {
   const target = event.target as HTMLElement
   const currentScrollTop = target.scrollTop
+
+  // Mostrar botón flotante para volver arriba si el scroll supera los 300px
+  showScrollToTop.value = currentScrollTop > 300
 
   // Si el usuario scrollea hacia abajo y los filtros están desplegados, replegarlos
   if (showFilters.value && currentScrollTop > 30 && currentScrollTop > lastScrollTop) {
@@ -435,6 +491,8 @@ function onListScroll(event: Event) {
             placeholder="Buscar par (ej: PJ, CA) o palabra..."
             icon="lucide:search"
             clearable
+            @focus="onSearchFocus"
+            @clear="clearSearch"
           />
         </div>
 
@@ -583,13 +641,45 @@ function onListScroll(event: Event) {
   </div>
 
     <!-- Contenedor con scroll para Lista o Matriz -->
-    <div class="flex-1 overflow-y-auto p-3 md:p-6" @scroll="onListScroll">
+    <div
+      ref="scrollContainerRef"
+      class="flex-1 overflow-y-auto p-3 md:p-6"
+      @scroll="onListScroll"
+    >
       <!-- Loading State -->
       <div v-if="pairsStore.loading" class="flex items-center justify-center py-20">
         <RubikLoader label="Cargando pares de letras..." />
       </div>
 
       <template v-else>
+        <!-- Barra informativa de resultados al buscar -->
+        <div
+          v-if="isSearching"
+          class="max-w-lg md:max-w-6xl mx-auto w-full mb-3 flex items-center justify-between gap-2 px-1 text-xs"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="inline-flex items-center gap-1.5 font-semibold text-slate-200">
+              <AppIcon name="lucide:search" :size="13" class-name="text-green-400" />
+              <span>{{ pairsStore.filteredPairs.length }} par{{ pairsStore.filteredPairs.length === 1 ? '' : 'es' }} encontrado{{ pairsStore.filteredPairs.length === 1 ? '' : 's' }}</span>
+            </span>
+            <span
+              v-if="hasExactMatch"
+              class="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-green-300 bg-green-500/15 border border-green-500/30 px-2 py-0.5 rounded-md"
+            >
+              <AppIcon name="lucide:check-circle-2" :size="12" />
+              <span>Par exacto al inicio</span>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            class="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-lg bg-dark-900 hover:bg-dark-800 border border-dark-800 transition-colors shrink-0 cursor-pointer"
+            @click="clearSearch"
+          >
+            <AppIcon name="lucide:x" :size="12" />
+            <span>Borrar búsqueda</span>
+          </button>
+        </div>
         <!-- Banner de alerta si hay pares que no pertenecen al esquema actual -->
         <div
           v-if="pairsStore.pairsOutsideScheme.length > 0 && pairsStore.filterStatus !== 'archived'"
@@ -902,6 +992,29 @@ function onListScroll(event: Event) {
         </button>
       </div>
     </div>
+  </Transition>
+
+  <!-- Botón flotante para volver arriba cuando se scrollea hacia abajo -->
+  <Transition
+    enter-active-class="transition-all duration-200 ease-out"
+    enter-from-class="opacity-0 scale-75 translate-y-3"
+    enter-to-class="opacity-100 scale-100 translate-y-0"
+    leave-active-class="transition-all duration-150 ease-in"
+    leave-from-class="opacity-100 scale-100 translate-y-0"
+    leave-to-class="opacity-0 scale-75 translate-y-3"
+  >
+    <button
+      v-if="showScrollToTop"
+      type="button"
+      :class="[
+        'fixed right-4 z-20 w-11 h-11 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-xl shadow-green-600/30 border border-green-400/40 flex items-center justify-center transition-all active:scale-90 cursor-pointer',
+        isSelectMode ? 'bottom-20' : 'bottom-20 md:bottom-6',
+      ]"
+      title="Volver arriba"
+      @click="scrollToTop(true)"
+    >
+      <AppIcon name="lucide:arrow-up" :size="20" class-name="stroke-[2.5]" />
+    </button>
   </Transition>
 
   <!-- Modal de edición -->

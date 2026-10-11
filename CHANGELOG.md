@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.18.0] - 2026-10-11
+- 🚀 feat(pairs): optimizar scroll y busqueda relajada en catalogo
+
 ## [0.17.1] - 2026-10-11
 - 🐛 fix(ui): eliminar recorte rectangular en RubikLoader 3D
 
