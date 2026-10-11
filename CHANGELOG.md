@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.17.1] - 2026-10-11
+- 🐛 fix(ui): eliminar recorte rectangular en RubikLoader 3D
+
 ## [0.17.0] - 2026-10-09
 - 🚀 feat(srs): anadir reinicio de progreso de memorizacion manteniendo notas
 

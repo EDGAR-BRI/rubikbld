@@ -155,7 +155,7 @@ const scaleRatio = computed(() => props.size / 84)
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-4 select-none contain-layout" :style="{ '--cube-size': size + 'px' }">
+  <div class="flex flex-col items-center gap-4 select-none" :style="{ '--cube-size': size + 'px' }">
     <!-- MODO 1: CUBO 3D CON ANTIFAZ Y CORREAS 3D (OPTIMIZADO A 60FPS) -->
     <div v-if="variant === '3d'" class="cube-wrap">
       <div
@@ -331,7 +331,7 @@ const scaleRatio = computed(() => props.size / 84)
   display: flex;
   align-items: center;
   justify-content: center;
-  contain: layout paint;
+  overflow: visible;
 }
 
 .cube-scale {
