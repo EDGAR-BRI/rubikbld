@@ -1,11 +1,12 @@
 {
   "name": "rubikbld",
   "private": true,
-  "version": "0.22.2",
+  "version": "0.22.3",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
   },
+  "packageManager": "npm@10.9.8",
   "scripts": {
     "dev": "node scripts/generate-offline-icons.mjs && vite",
     "build": "node scripts/generate-offline-icons.mjs && vue-tsc -b && vite build",
