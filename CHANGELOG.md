@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.23.0] - 2026-10-12
+- 🚀 feat(seo): optimizar metaetiquetas, open graph, json-ld schema, sitemap y titulos dinamicos
+
 ## [0.22.3] - 2026-10-12
 - 🐛 fix(ci): unificar gestor de paquetes a npm y eliminar pnpm-lock desactualizado para despliegues en vercel
 

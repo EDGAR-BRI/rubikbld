@@ -2,38 +2,167 @@
 <html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#070a10" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Memo Cube</title>
+
+    <!-- SEO Primario: Título, Descripción y Canónica -->
+    <title>Memo Cube — Entrenamiento 3x3 a Ciegas (3BLD) y Repetición Espaciada (SRS)</title>
     <meta
       name="description"
-      content="Memo Cube — Entrena y memoriza tus pares de letras para 3x3 a Ciegas (Blindfolded / 3BLD) con Repetición Espaciada (SRS estilo Anki) y visualizador 3D."
+      content="Memo Cube es la aplicación PWA para speedcubers en 3x3 a Ciegas (3BLD). Memoriza y entrena tus pares de letras con Repetición Espaciada (SRS estilo Anki), visualizador 3D del cubo y cronómetro oficial 100% offline."
     />
-    <meta property="og:title" content="Memo Cube" />
+    <meta
+      name="keywords"
+      content="cubo de rubik a ciegas, 3bld, rubik 3bld, blindfolded cubing, pares de letras, speffz, flashcards rubik, repeticion espaciada, anki cubing, speedcubing, cubo rubik 3x3, mnemotecnia cubo, memorizacion 3bld, scrambles bld, memo cube"
+    />
+    <meta name="author" content="EDGAR-BRI" />
+    <meta name="publisher" content="Memo Cube" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://rubikbld.vercel.app/" />
+
+    <!-- Favicons y Metadatos PWA -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#070a10" />
+    <meta name="application-name" content="Memo Cube" />
+    <meta name="apple-mobile-web-app-title" content="Memo Cube" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:site_name" content="Memo Cube" />
+    <meta property="og:title" content="Memo Cube — Entrenamiento 3x3 a Ciegas (3BLD) y Repetición Espaciada (SRS)" />
     <meta
       property="og:description"
-      content="Memo Cube — Entrena y memoriza tus pares de letras para 3x3 a Ciegas (Blindfolded / 3BLD) con Repetición Espaciada (SRS estilo Anki) y visualizador 3D."
+      content="Entrena y memoriza tus pares de letras para 3x3 a Ciegas (3BLD) con Repetición Espaciada (SRS estilo Anki), visualizador 3D y cronómetro oficial. 100% Offline y gratis."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/pwa-512x512.png" />
-    <meta name="twitter:card" content="summary" />
-    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <meta property="og:url" content="https://rubikbld.vercel.app/" />
+    <meta property="og:image" content="https://rubikbld.vercel.app/pwa-512x512.png" />
+    <meta property="og:image:secure_url" content="https://rubikbld.vercel.app/pwa-512x512.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Logotipo y cubo 3D de Memo Cube para Blindfolded" />
+    <meta property="og:locale" content="es_ES" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Memo Cube — Entrenamiento 3x3 a Ciegas (3BLD) y Repetición Espaciada (SRS)" />
+    <meta
+      name="twitter:description"
+      content="Entrena y memoriza tus pares de letras para 3x3 a Ciegas (3BLD) con Repetición Espaciada (SRS estilo Anki), visualizador 3D y cronómetro oficial. 100% Offline y gratis."
+    />
+    <meta name="twitter:image" content="https://rubikbld.vercel.app/pwa-512x512.png" />
+    <meta name="twitter:image:alt" content="Logotipo y cubo 3D de Memo Cube para Blindfolded" />
+
+    <!-- Google Fonts: Inter & JetBrains Mono con preconnect optimizado -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Datos Estructurados Schema.org / JSON-LD: WebApplication -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Memo Cube",
+        "alternateName": "Rubik BLD Flashcards",
+        "url": "https://rubikbld.vercel.app/",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "description": "Aplicación web progresiva (PWA) móvil primero para speedcubers en la categoría 3x3 a Ciegas (3BLD). Permite memorizar pares de letras mediante Repetición Espaciada (SRS estilo Anki), visualizador 3D del cubo y cronómetro de scrambles.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "EDGAR-BRI",
+          "url": "https://github.com/EDGAR-BRI"
+        },
+        "featureList": [
+          "Entrenamiento de pares de letras para 3x3 Blindfolded (3BLD)",
+          "Algoritmo de Repetición Espaciada (SRS / SM-2 estilo Anki)",
+          "Visualizador interactivo 3D del cubo de Rubik",
+          "Módulo de práctica con scrambles oficiales WCA y cronómetro",
+          "Gestión de esquemas de letras Speffz y personalizados",
+          "Funcionamiento 100% offline-first con IndexedDB (Dexie)",
+          "Sincronización serverless opcional con Google Drive"
+        ]
+      }
+    </script>
+
+    <!-- Datos Estructurados Schema.org / JSON-LD: FAQPage -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "¿Qué es Memo Cube?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Memo Cube es una Progressive Web App (PWA) diseñada para competidores de Cubo de Rubik en la categoría 3x3 a Ciegas (3BLD), que ayuda a memorizar pares de letras mnemotécnicos mediante repetición espaciada (SRS) y visualización 3D."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Funciona sin conexión a internet (Offline)?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sí, Memo Cube es 100% offline-first. Todos los datos, tarjetas, imágenes mnemotécnicas e historial de práctica se guardan localmente en el dispositivo utilizando IndexedDB a través de Dexie.js."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Qué esquema de letras utiliza para 3BLD?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Memo Cube incluye por defecto el esquema estándar internacional Speffz y permite personalizar cualquier letra de arista o esquina, además de configurar buffers personalizados con exclusión automática de piezas físicamente imposibles."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Cómo funciona la repetición espaciada (SRS)?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Utiliza un algoritmo derivado de SM-2 (estilo Anki) que clasifica las tarjetas en colas de Nuevas, Aprendiendo y Vencidas, calculando intervalos óptimos de repaso según la dificultad seleccionada por el usuario (Otra vez, Difícil, Bien, Fácil)."
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body class="bg-dark-950 text-slate-100">
     <div id="app"></div>
+
+    <!-- Contenido semántico accesible para rastreadores sin JS -->
+    <noscript>
+      <div style="max-width: 680px; margin: 40px auto; padding: 24px; font-family: sans-serif; background-color: #090d16; color: #f1f5f9; border-radius: 16px;">
+        <h1>Memo Cube — Entrenamiento 3x3 a Ciegas (3BLD)</h1>
+        <p>Memo Cube es una aplicación web progresiva para memorizar y entrenar pares de letras del Cubo de Rubik con el método de Repetición Espaciada (SRS).</p>
+        <h2>Características principales:</h2>
+        <ul>
+          <li>Repaso de pares de letras con algoritmo SRS estilo Anki.</li>
+          <li>Práctica de memorización contrarreloj con generador de mezclas oficiales (scrambles).</li>
+          <li>Esquema de letras Speffz interactivo en 3D.</li>
+          <li>100% Offline con almacenamiento local.</li>
+        </ul>
+        <p>Para utilizar todas las funciones interactivas del cubo 3D y las tarjetas, por favor habilita JavaScript en tu navegador.</p>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -17,14 +17,18 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Memo Cube',
+        name: 'Memo Cube — Entrenamiento 3x3 a Ciegas (3BLD)',
         short_name: 'Memo Cube',
-        description: 'Entrenamiento de pares de letras para Blindfolded con Repetición Espaciada (SRS)',
+        description: 'Entrenamiento y memorización de pares de letras para 3x3 a Ciegas con Repetición Espaciada (SRS), visualizador 3D y cronómetro oficial.',
+        lang: 'es',
+        dir: 'ltr',
+        categories: ['education', 'utilities', 'games'],
         theme_color: '#090d16',
         background_color: '#090d16',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        scope: '/',
         icons: [
           {
             src: '/pwa-192x192.png',
