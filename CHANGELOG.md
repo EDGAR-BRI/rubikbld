@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.20.0] - 2026-10-12
+- 🚀 feat(icons): sistema de renderizado nativo SVG 100% offline
+
 ## [0.19.0] - 2026-10-12
 - 🚀 feat(settings): añadir preferencia de orden de memorización 3BLD
 
