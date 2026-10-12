@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.22.2] - 2026-10-12
+- 🐛 fix(pwa): resolver error de navegacion en actualizacion y transicion de service worker
+
 ## [0.22.1] - 2026-10-12
 - 🧹 chore: ignorar archivos de copia de seguridad local en .gitignore
 

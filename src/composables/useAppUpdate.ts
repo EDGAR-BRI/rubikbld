@@ -26,12 +26,27 @@ export function useAppUpdate() {
   const isCheckingUpdate = ref(false)
   const updateStatusText = ref('Buscando actualizaciones...')
   const updateDetailText = ref('Comprobando si hay una nueva versión disponible...')
+  let hasNavigated = false
 
-  // Escuchar si el Service Worker toma control mientras la app está viva
+  function safeReloadToRoot() {
+    if (hasNavigated) return
+    hasNavigated = true
+    if (typeof window !== 'undefined') {
+      // Redirigir siempre a la raíz con timestamp para evitar caché HTTP en index.html
+      // y prevenir errores de navegación directa a subrutas SPA como /settings
+      window.location.replace(`${window.location.origin}/?v=${Date.now()}`)
+    }
+  }
+
+  // Escuchar si un nuevo Service Worker toma control mientras la búsqueda está activa
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (isCheckingUpdate.value) {
-        window.location.reload()
+        updateStatusText.value = '¡Actualización lista!'
+        updateDetailText.value = 'Reiniciando aplicación con la nueva versión...'
+        setTimeout(() => {
+          safeReloadToRoot()
+        }, 600)
       }
     })
   }
@@ -47,75 +62,13 @@ export function useAppUpdate() {
 
     isCheckingUpdate.value = true
     updateStatusText.value = 'Buscando actualizaciones...'
-    updateDetailText.value = 'Verificando con el Service Worker y el repositorio...'
+    updateDetailText.value = 'Verificando con el repositorio y el Service Worker...'
 
-    // Aseguramos una duración mínima de 2s para que el usuario aprecie el loader 3D del cubo
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 2000))
+    // Duración mínima de 1.8s para que la animación del cubo 3D se aprecie de forma fluida
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 1800))
 
     try {
-      let updateFound = false
-      let newVersionTag: string | null = null
-
-      // 1. Verificación en Service Worker (PWA)
-      const swPromise = (async (): Promise<boolean> => {
-        if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
-          return false
-        }
-
-        try {
-          const reg = await navigator.serviceWorker.getRegistration()
-          if (!reg) return false
-
-          // Si ya existe un worker descargado en espera
-          if (reg.waiting) {
-            reg.waiting.postMessage({ type: 'SKIP_WAITING' })
-            return true
-          }
-
-          return await new Promise<boolean>((resolve) => {
-            let resolved = false
-            const timeout = setTimeout(() => {
-              if (!resolved) {
-                resolved = true
-                resolve(false)
-              }
-            }, 3500)
-
-            const onUpdateFound = () => {
-              const installingWorker = reg.installing
-              if (!installingWorker) return
-
-              updateStatusText.value = 'Descargando actualización...'
-              updateDetailText.value = 'Obteniendo los archivos más recientes de Memo Cube...'
-
-              installingWorker.addEventListener('statechange', () => {
-                if (installingWorker.state === 'installed') {
-                  if (!resolved) {
-                    resolved = true
-                    clearTimeout(timeout)
-                    resolve(true)
-                  }
-                }
-              })
-            }
-
-            reg.addEventListener('updatefound', onUpdateFound, { once: true })
-
-            reg.update().catch(() => {
-              if (!resolved) {
-                resolved = true
-                clearTimeout(timeout)
-                resolve(false)
-              }
-            })
-          })
-        } catch (err) {
-          console.warn('Advertencia comprobando Service Worker:', err)
-          return false
-        }
-      })()
-
-      // 2. Verificación remota en GitHub (package.json en main)
+      // 1. Verificación remota en GitHub (package.json en main)
       const remotePromise = (async (): Promise<string | null> => {
         try {
           const controller = new AbortController()
@@ -137,28 +90,124 @@ export function useAppUpdate() {
             }
           }
         } catch {
-          // Si falla GitHub (bloqueo o rate limit), no interrumpe el flujo de la app
+          // Si falla GitHub (bloqueo, rate limit o timeout), no bloquea la app
         }
         return null
       })()
 
-      const [swUpdated, remoteVersion] = await Promise.all([swPromise, remotePromise])
+      // 2. Verificación con el Service Worker local
+      const swPromise = (async (): Promise<{
+        hasUpdate: boolean
+        waitingWorker: ServiceWorker | null
+        installingWorker: ServiceWorker | null
+        registration: ServiceWorkerRegistration | null
+      }> => {
+        if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+          return { hasUpdate: false, waitingWorker: null, installingWorker: null, registration: null }
+        }
+
+        try {
+          const reg = await navigator.serviceWorker.getRegistration()
+          if (!reg) {
+            return { hasUpdate: false, waitingWorker: null, installingWorker: null, registration: null }
+          }
+
+          // Si ya existe un worker descargado en espera
+          if (reg.waiting) {
+            return { hasUpdate: true, waitingWorker: reg.waiting, installingWorker: null, registration: reg }
+          }
+
+          return await new Promise((resolve) => {
+            let settled = false
+            const timer = setTimeout(() => {
+              if (!settled) {
+                settled = true
+                resolve({
+                  hasUpdate: false,
+                  waitingWorker: null,
+                  installingWorker: null,
+                  registration: reg,
+                })
+              }
+            }, 3500)
+
+            const onUpdateFound = () => {
+              const worker = reg.installing
+              if (!worker) return
+
+              updateStatusText.value = 'Descargando actualización...'
+              updateDetailText.value = 'Obteniendo los archivos más recientes de Memo Cube...'
+
+              worker.addEventListener('statechange', () => {
+                if (worker.state === 'installed') {
+                  if (!settled) {
+                    settled = true
+                    clearTimeout(timer)
+                    resolve({
+                      hasUpdate: true,
+                      waitingWorker: reg.waiting || worker,
+                      installingWorker: worker,
+                      registration: reg,
+                    })
+                  }
+                }
+              })
+            }
+
+            reg.addEventListener('updatefound', onUpdateFound, { once: true })
+
+            reg.update().catch(() => {
+              if (!settled) {
+                settled = true
+                clearTimeout(timer)
+                resolve({
+                  hasUpdate: false,
+                  waitingWorker: null,
+                  installingWorker: null,
+                  registration: reg,
+                })
+              }
+            })
+          })
+        } catch (err) {
+          console.warn('Advertencia comprobando Service Worker:', err)
+          return { hasUpdate: false, waitingWorker: null, installingWorker: null, registration: null }
+        }
+      })()
+
+      const [remoteVersion, swResult] = await Promise.all([remotePromise, swPromise])
       await minDelay
 
-      if (remoteVersion && isNewerVersion(remoteVersion, APP_VERSION)) {
-        updateFound = true
-        newVersionTag = remoteVersion
-      } else if (swUpdated) {
-        updateFound = true
-      }
+      const hasRemoteUpdate = !!(remoteVersion && isNewerVersion(remoteVersion, APP_VERSION))
+      const hasSwUpdate = swResult.hasUpdate
 
-      if (updateFound) {
-        updateStatusText.value = newVersionTag
-          ? `¡Nueva versión v${newVersionTag} disponible!`
-          : '¡Actualización encontrada!'
-        updateDetailText.value = 'Aplicando cambios y reiniciando aplicación...'
+      if (hasSwUpdate && (swResult.waitingWorker || swResult.installingWorker)) {
+        // CASO A: El Service Worker ya descargó o terminó de instalar la nueva versión
+        updateStatusText.value = remoteVersion
+          ? `¡Nueva versión v${remoteVersion} lista!`
+          : '¡Actualización descargada!'
+        updateDetailText.value = 'Activando cambios y reiniciando aplicación...'
 
-        // Limpiar cachés del navegador para evitar assets obsoletos
+        const targetWorker = swResult.waitingWorker || swResult.installingWorker
+        targetWorker?.postMessage({ type: 'SKIP_WAITING' })
+
+        // Timeout de seguridad en caso de que controllerchange no se dispare
+        setTimeout(() => {
+          safeReloadToRoot()
+        }, 1500)
+      } else if (hasRemoteUpdate) {
+        // CASO B: Hay una versión más nueva en GitHub pero el Service Worker local no la detectó
+        // (ej. caché de SW obsoleta o desfasada en el cliente).
+        // Desregistramos limpiamente el Service Worker viejo y limpiamos caché sin corromper el runtime.
+        updateStatusText.value = `¡Nueva versión v${remoteVersion} disponible!`
+        updateDetailText.value = 'Sincronizando con el servidor y actualizando...'
+
+        if (swResult.registration) {
+          try {
+            await swResult.registration.unregister()
+          } catch {}
+        }
+
         if (typeof window !== 'undefined' && 'caches' in window) {
           try {
             const keys = await caches.keys()
@@ -166,14 +215,14 @@ export function useAppUpdate() {
           } catch {}
         }
 
-        // Breve pausa para que el usuario lea la confirmación
-        await new Promise((resolve) => setTimeout(resolve, 1400))
-        window.location.reload()
+        await new Promise((resolve) => setTimeout(resolve, 800))
+        safeReloadToRoot()
       } else {
+        // CASO C: La aplicación ya está al día
         updateStatusText.value = '¡Memo Cube está al día!'
         updateDetailText.value = `Tienes la versión más reciente (v${APP_VERSION}).`
 
-        await new Promise((resolve) => setTimeout(resolve, 1200))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         isCheckingUpdate.value = false
 
         showSuccessToast(
