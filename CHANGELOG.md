@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.22.1] - 2026-10-12
+- 🧹 chore: ignorar archivos de copia de seguridad local en .gitignore
+
 ## [0.22.0] - 2026-10-12
 - 🚀 feat(practice): añadir módulo de práctica 3BLD con scrambles y contrarreloj
 
