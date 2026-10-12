@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.21.0] - 2026-10-12
+- 🚀 feat(cube3d): optimizar rendimiento a 60/120fps y corregir recorte y controles
+
 ## [0.20.0] - 2026-10-12
 - 🚀 feat(icons): sistema de renderizado nativo SVG 100% offline
 

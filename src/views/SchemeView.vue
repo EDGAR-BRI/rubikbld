@@ -568,6 +568,7 @@ function getFaceColor(stickerId: string) {
       <div v-else class="flex flex-col items-center pb-6">
         <Cube3D
           :scheme="schemeStore.currentScheme"
+          :show-help-banner="true"
           @select-sticker="openSticker"
         />
       </div>
