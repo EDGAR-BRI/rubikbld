@@ -94,9 +94,9 @@ export function stickerCoord(id: string, gridSize: number = 3): [number, number,
 
   switch (face) {
     case 'U': return [col - c, n / 2, row - c]
-    case 'D': return [col - c, -n / 2, row - c]
+    case 'D': return [col - c, -n / 2, c - row]
     case 'F': return [col - c, c - row, n / 2]
-    case 'B': return [col - c, c - row, -n / 2]
+    case 'B': return [c - col, c - row, -n / 2]
     case 'R': return [n / 2, c - row, c - col]
     case 'L': return [-n / 2, c - row, col - c]
     default: return [0, 0, 0]

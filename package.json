@@ -1,14 +1,14 @@
 {
   "name": "rubikbld",
   "private": true,
-  "version": "0.18.0",
+  "version": "0.18.1",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "dev": "node scripts/generate-offline-icons.mjs && vite",
+    "build": "node scripts/generate-offline-icons.mjs && vue-tsc -b && vite build",
     "preview": "vite preview",
     "prepare": "node -e \"try { if (!process.env.CI && !process.env.VERCEL && require('node:fs').existsSync('.git')) require('node:child_process').execSync('node scripts/setup-git-hooks.mjs', { stdio: 'inherit' }); } catch {}\""
   },
@@ -24,6 +24,7 @@
     "vue-router": "^5.4.0"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.142",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
