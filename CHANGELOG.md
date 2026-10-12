@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.19.0] - 2026-10-12
+- 🚀 feat(settings): añadir preferencia de orden de memorización 3BLD
+
 ## [0.18.1] - 2026-10-12
 - 🐛 fix(cube): corregir coordenadas de stickers en caras D y B
 

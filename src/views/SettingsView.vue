@@ -520,6 +520,57 @@ function openGithubUrl(url: string) {
             />
           </div>
 
+          <!-- Orden de Memorización 3BLD -->
+          <div class="pt-3 border-t border-dark-800">
+            <div class="flex items-center justify-between mb-1.5">
+              <div>
+                <span class="text-sm font-medium text-slate-200">Orden de Memorización 3BLD</span>
+                <p class="text-xs text-slate-400">Define si trazas y recuerdas primero aristas o esquinas</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-2">
+              <button
+                type="button"
+                :class="[
+                  'p-3 rounded-xl border text-left flex flex-col gap-1 transition-all',
+                  settingsStore.bldMemoOrder === 'edges_first'
+                    ? 'bg-emerald-950/40 border-emerald-500/60 text-white shadow-sm'
+                    : 'bg-dark-950/60 border-dark-800 text-slate-400 hover:text-white hover:border-dark-700',
+                ]"
+                @click="() => {
+                  settingsStore.setBldMemoOrder('edges_first')
+                  showSuccessToast('Orden actualizado', 'Memorización: Aristas primero, luego Esquinas')
+                }"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-emerald-400">Aristas → Esquinas</span>
+                  <AppIcon v-if="settingsStore.bldMemoOrder === 'edges_first'" name="lucide:check-circle" :size="16" class-name="text-emerald-400" />
+                </div>
+                <span class="text-[11px] text-slate-400">1º Aristas, luego Esquinas</span>
+              </button>
+
+              <button
+                type="button"
+                :class="[
+                  'p-3 rounded-xl border text-left flex flex-col gap-1 transition-all',
+                  settingsStore.bldMemoOrder === 'corners_first'
+                    ? 'bg-purple-950/40 border-purple-500/60 text-white shadow-sm'
+                    : 'bg-dark-950/60 border-dark-800 text-slate-400 hover:text-white hover:border-dark-700',
+                ]"
+                @click="() => {
+                  settingsStore.setBldMemoOrder('corners_first')
+                  showSuccessToast('Orden actualizado', 'Memorización: Esquinas primero, luego Aristas')
+                }"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-purple-400">Esquinas → Aristas</span>
+                  <AppIcon v-if="settingsStore.bldMemoOrder === 'corners_first'" name="lucide:check-circle" :size="16" class-name="text-purple-400" />
+                </div>
+                <span class="text-[11px] text-slate-400">1º Esquinas, luego Aristas</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Nuevas cartas por día -->
           <div class="pt-3 border-t border-dark-800">
             <div class="flex items-center justify-between mb-2">

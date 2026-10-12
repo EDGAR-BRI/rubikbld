@@ -14,6 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const srsSettings = ref<SRSSettings>({ ...DEFAULT_SRS_SETTINGS })
   const practiceOnlyCompleted = ref(true) // Solo practicar pares que ya tienen palabra configurada
   const reversePractice = ref(false) // Ver imagen/palabra primero y adivinar el par
+  const bldMemoOrder = ref<'edges_first' | 'corners_first'>('edges_first') // Orden de memorización y trazado 3BLD
   const googleClientId = ref<string>(defaultClientId)
   
   // Gestos táctiles de deslizamiento en tarjetas
@@ -57,6 +58,11 @@ export const useSettingsStore = defineStore('settings', () => {
     const rev = await db.settings.get('reverse_practice')
     if (rev !== undefined) {
       reversePractice.value = rev.value
+    }
+
+    const memoOrder = await db.settings.get('bld_memo_order')
+    if (memoOrder?.value === 'edges_first' || memoOrder?.value === 'corners_first') {
+      bldMemoOrder.value = memoOrder.value
     }
 
     const gestures = await db.settings.get('enable_card_gestures')
@@ -130,6 +136,11 @@ export const useSettingsStore = defineStore('settings', () => {
   async function setReversePractice(val: boolean) {
     reversePractice.value = val
     await db.settings.put({ key: 'reverse_practice', value: val })
+  }
+
+  async function setBldMemoOrder(order: 'edges_first' | 'corners_first') {
+    bldMemoOrder.value = order
+    await db.settings.put({ key: 'bld_memo_order', value: order })
   }
 
   async function setEnableCardGestures(val: boolean) {
@@ -347,6 +358,7 @@ export const useSettingsStore = defineStore('settings', () => {
     srsSettings,
     practiceOnlyCompleted,
     reversePractice,
+    bldMemoOrder,
     googleClientId,
     enableCardGestures,
     allowSwipeBeforeFlip,
@@ -359,6 +371,7 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSRSSettings,
     setPracticeOnlyCompleted,
     setReversePractice,
+    setBldMemoOrder,
     setEnableCardGestures,
     setAllowSwipeBeforeFlip,
     setGestureSensitivity,
