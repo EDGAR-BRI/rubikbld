@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.22.0] - 2026-10-12
+- 🚀 feat(practice): añadir módulo de práctica 3BLD con scrambles y contrarreloj
+
 ## [0.21.0] - 2026-10-12
 - 🚀 feat(cube3d): optimizar rendimiento a 60/120fps y corregir recorte y controles
 

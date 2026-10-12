@@ -11,6 +11,11 @@ const routes = [
     component: StudyView,
   },
   {
+    path: '/practice',
+    name: 'practice',
+    component: () => import('@/views/PracticeView.vue'),
+  },
+  {
     path: '/pairs',
     name: 'pairs',
     component: PairsView,

@@ -18,6 +18,11 @@ const navItems = computed(() => [
     badge: pendingDue.value > 0 ? pendingDue.value : null,
   },
   {
+    name: 'Práctica',
+    path: '/practice',
+    icon: 'lucide:timer',
+  },
+  {
     name: 'Pares',
     path: '/pairs',
     icon: 'lucide:grid-2x2',

@@ -26,6 +26,12 @@ const navItems = computed(() => [
     badgeVariant: 'danger',
   },
   {
+    name: 'Práctica BLD',
+    description: 'Scrambles y memorización',
+    path: '/practice',
+    icon: 'lucide:timer',
+  },
+  {
     name: 'Pares de Letras',
     description: 'Diccionario y mnemotecnias',
     path: '/pairs',
