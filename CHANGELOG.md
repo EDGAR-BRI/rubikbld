@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.23.1] - 2026-11-10
+- 🐛 fix(scheme): alinear cara amarilla 2d desde d0 con vista 3d
+
 ## [0.23.0] - 2026-10-12
 - 🚀 feat(seo): optimizar metaetiquetas, open graph, json-ld schema, sitemap y titulos dinamicos
 

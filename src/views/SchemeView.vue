@@ -23,10 +23,6 @@ import { showSuccessToast, showErrorToast, confirmResetScheme } from '@/utils/al
 
 const schemeStore = useSchemeStore()
 
-// En el despliegue 2D, la cara D (abajo) conecta con la cara F por su fila superior (DFL=D6, DF=D7, DFR=D8).
-// Invertimos las filas para que el buffer DF (D7) y las esquinas (D6, D8) toquen directamente con la cara F.
-const D_FACE_STICKER_ORDER = [6, 7, 8, 3, 4, 5, 0, 1, 2]
-
 // En la cara B (Azul), al mirar el cubo desde atrás (como en la vista 3D) o al desplegarla a la derecha de R,
 // la columna izquierda bordea con la cara R (UBR=B2, BR=B5, DBR=B8) y la derecha con L (UBL=B0, BL=B3, DBL=B6).
 // Invertimos las columnas para que coincida exactamente con la vista 3D (2, 1, 0 / 5, 4, 3 / 8, 7, 6).
@@ -34,7 +30,8 @@ const B_FACE_STICKER_ORDER = [2, 1, 0, 5, 4, 3, 8, 7, 6]
 
 function getFaceStickerOrder(face: CubeFace): number[] {
   if (face === 'B') return B_FACE_STICKER_ORDER
-  if (face === 'D') return D_FACE_STICKER_ORDER
+  // La cara D (Amarillo) usa el orden estándar 0..8 (D0=DFL, D1=DF, D2=DFR en la fila superior),
+  // coincidiendo directamente con la vista 3D y con las coordenadas físicas del cubo.
   return [0, 1, 2, 3, 4, 5, 6, 7, 8]
 }
 
