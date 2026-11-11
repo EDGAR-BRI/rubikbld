@@ -34,8 +34,9 @@ watch(isOnline, async (online, wasOnline) => {
     // Si el usuario vinculó su cuenta de Google
     const isConnected = await db.settings.get('google_is_connected')
     if (isConnected?.value) {
+      settingsStore.preloadGoogleClient()
       if (settingsStore.autoSyncDrive) {
-        // Modo automático: subir respaldo en segundo plano
+        // Modo automático: sube respaldo en segundo plano solo si el token temporal sigue vigente (no abre popups)
         const synced = await settingsStore.syncWithDrive(false)
         if (synced) {
           showSuccessToast(
@@ -45,9 +46,6 @@ watch(isOnline, async (online, wasOnline) => {
           )
           return
         }
-      } else {
-        // Modo manual: solo renovar silenciosamente el token sin subir datos
-        settingsStore.silentRefreshGoogleToken().catch(() => {})
       }
     }
 

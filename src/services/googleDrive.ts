@@ -15,47 +15,128 @@ export interface DriveSyncStatus {
   error: string | null
 }
 
+export class GoogleAuthExpiredError extends Error {
+  readonly isAuthExpired = true
+  constructor(message = 'Tu sesión temporal de Google expiró. Pulsa para renovarla con 1 clic.') {
+    super(message)
+    this.name = 'GoogleAuthExpiredError'
+  }
+}
+
 const BACKUP_FILENAME = 'rubikbld_backup.json'
 const SCOPES = 'https://www.googleapis.com/auth/drive.file'
 
 class GoogleDriveService {
   private accessToken: string | null = null
   private tokenClient: any = null
+  private initializedClientId: string | null = null
+  private scriptLoadingPromise: Promise<void> | null = null
+  private pendingTokenResolve: ((res: { accessToken: string; expiresIn: number }) => void) | null = null
+  private pendingTokenReject: ((err: Error) => void) | null = null
 
   /**
    * Carga dinámicamente el SDK de Google Identity Services si no está presente
    */
   async loadGoogleScript(): Promise<void> {
     if ((window as any).google?.accounts?.oauth2) return
+    if (this.scriptLoadingPromise) return this.scriptLoadingPromise
 
-    return new Promise((resolve, reject) => {
+    this.scriptLoadingPromise = new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]')
+      if (existing) {
+        existing.addEventListener('load', () => resolve(), { once: true })
+        existing.addEventListener('error', () => {
+          this.scriptLoadingPromise = null
+          reject(new Error('No se pudo cargar el SDK de Google'))
+        }, { once: true })
+        return
+      }
+
       const script = document.createElement('script')
       script.src = 'https://accounts.google.com/gsi/client'
       script.async = true
       script.defer = true
       script.onload = () => resolve()
-      script.onerror = () => reject(new Error('No se pudo cargar el SDK de Google'))
+      script.onerror = () => {
+        this.scriptLoadingPromise = null
+        reject(new Error('No se pudo cargar el SDK de Google'))
+      }
       document.head.appendChild(script)
     })
+
+    return this.scriptLoadingPromise
+  }
+
+  /**
+   * Indica si el cliente OAuth2 ya está listo en memoria para usarse sincrónicamente al hacer clic
+   */
+  isClientReady(clientId?: string): boolean {
+    if (!this.tokenClient) return false
+    if (clientId && this.initializedClientId !== clientId) return false
+    return true
+  }
+
+  private settlePendingTokenError(err: Error): void {
+    const reject = this.pendingTokenReject
+    this.pendingTokenResolve = null
+    this.pendingTokenReject = null
+    reject?.(err)
   }
 
   /**
    * Inicializa el cliente de token OAuth2 con el Client ID del usuario/app
    */
   async initClient(clientId: string): Promise<void> {
+    if (this.tokenClient && this.initializedClientId === clientId) return
+
     await this.loadGoogleScript()
     const google = (window as any).google
+    if (!google?.accounts?.oauth2) {
+      throw new Error('El SDK de Google Identity no se inicializó correctamente')
+    }
 
     this.tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: SCOPES,
-      callback: (tokenResponse: any) => {
-        if (tokenResponse.error) {
-          throw new Error(tokenResponse.error)
+      callback: (resp: any) => {
+        const resolve = this.pendingTokenResolve
+        const reject = this.pendingTokenReject
+        this.pendingTokenResolve = null
+        this.pendingTokenReject = null
+
+        if (resp?.error) {
+          reject?.(new Error(resp.error_description || resp.error))
+          return
         }
-        this.accessToken = tokenResponse.access_token
+
+        if (!resp?.access_token) {
+          reject?.(new Error('No se recibió un token de acceso válido de Google'))
+          return
+        }
+
+        this.accessToken = resp.access_token
+        const expiresIn =
+          typeof resp.expires_in === 'number'
+            ? resp.expires_in
+            : parseInt(resp.expires_in, 10) || 3600
+
+        resolve?.({
+          accessToken: resp.access_token,
+          expiresIn,
+        })
+      },
+      error_callback: (err: { type?: string; message?: string }) => {
+        let msg = err?.message || 'No se pudo completar la autenticación con Google'
+        if (err?.type === 'popup_failed_to_open') {
+          msg = 'El navegador bloqueó la ventana emergente de Google. Intenta pulsar el botón nuevamente.'
+        } else if (err?.type === 'popup_closed') {
+          msg = 'Se cerró la ventana de inicio de sesión de Google.'
+        }
+        this.settlePendingTokenError(new Error(msg))
       },
     })
+
+    this.initializedClientId = clientId
   }
 
   /**
@@ -73,33 +154,41 @@ class GoogleDriveService {
   }
 
   /**
-   * Solicita token de acceso OAuth2 (interactivo o silencioso)
+   * Solicita token de acceso OAuth2. Debe invocarse desde una interacción del usuario
+   * para que el navegador no bloquee el popup de Google Identity Services.
    */
-  async requestAccessToken(options?: { prompt?: string }): Promise<{ accessToken: string; expiresIn: number }> {
+  async requestAccessToken(options?: {
+    prompt?: string
+    loginHint?: string
+  }): Promise<{ accessToken: string; expiresIn: number }> {
     return new Promise((resolve, reject) => {
       if (!this.tokenClient) {
         reject(new Error('El cliente de Google no ha sido inicializado con un Client ID'))
         return
       }
 
-      this.tokenClient.callback = (resp: any) => {
-        if (resp.error) {
-          reject(new Error(resp.error_description || resp.error))
-        } else {
-          this.accessToken = resp.access_token
-          const expiresIn =
-            typeof resp.expires_in === 'number'
-              ? resp.expires_in
-              : parseInt(resp.expires_in, 10) || 3600
-          resolve({
-            accessToken: resp.access_token,
-            expiresIn,
-          })
-        }
+      if (this.pendingTokenReject) {
+        this.settlePendingTokenError(new Error('Se inició una nueva solicitud de sesión'))
       }
 
-      const promptVal = options?.prompt !== undefined ? options.prompt : 'consent'
-      this.tokenClient.requestAccessToken({ prompt: promptVal })
+      this.pendingTokenResolve = resolve
+      this.pendingTokenReject = reject
+
+      const overrideConfig: Record<string, string> = {}
+      if (options?.prompt !== undefined) {
+        overrideConfig.prompt = options.prompt
+      }
+      if (options?.loginHint) {
+        overrideConfig.login_hint = options.loginHint
+      }
+
+      try {
+        this.tokenClient.requestAccessToken(overrideConfig)
+      } catch (err: any) {
+        this.settlePendingTokenError(
+          new Error(err?.message || 'No se pudo abrir la ventana de autenticación de Google'),
+        )
+      }
     })
   }
 
@@ -145,6 +234,10 @@ class GoogleDriveService {
       },
     )
 
+    if (res.status === 401) {
+      this.accessToken = null
+      throw new GoogleAuthExpiredError()
+    }
     if (!res.ok) throw new Error('Error al consultar Google Drive')
     const data = await res.json()
     if (data.files && data.files.length > 0) {
@@ -217,6 +310,10 @@ class GoogleDriveService {
           body: fileContent,
         },
       )
+      if (res.status === 401) {
+        this.accessToken = null
+        throw new GoogleAuthExpiredError()
+      }
       if (!res.ok) throw new Error('Error al actualizar el respaldo en Google Drive')
     } else {
       // Crear nuevo archivo multipart
@@ -251,6 +348,10 @@ class GoogleDriveService {
         },
       )
 
+      if (res.status === 401) {
+        this.accessToken = null
+        throw new GoogleAuthExpiredError()
+      }
       if (!res.ok) throw new Error('Error al crear el archivo en Google Drive')
     }
   }
@@ -271,6 +372,10 @@ class GoogleDriveService {
       },
     )
 
+    if (res.status === 401) {
+      this.accessToken = null
+      throw new GoogleAuthExpiredError()
+    }
     if (!res.ok) throw new Error('Error al descargar el respaldo de Google Drive')
     const content = await res.text()
     await this.importLocalData(content)

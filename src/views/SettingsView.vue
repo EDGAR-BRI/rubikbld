@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { googleDriveService } from '@/services/googleDrive'
 import AppHeader from '@/components/ui/AppHeader.vue'
@@ -55,8 +55,18 @@ const showManualClientId = ref(false)
 const jsonFileInputRef = ref<HTMLInputElement | null>(null)
 const jsonStatusMsg = ref<string | null>(null)
 
+watch(isOnline, (online) => {
+  if (online) {
+    settingsStore.preloadGoogleClient()
+  }
+})
+
 onMounted(async () => {
   await settingsStore.loadSettings()
+  settingsStore.refreshTokenValidityState()
+  if (isOnline.value) {
+    settingsStore.preloadGoogleClient()
+  }
   await pairsStore.loadPairs()
   await schemeStore.loadScheme()
   clientIdInput.value = settingsStore.googleClientId
@@ -138,7 +148,12 @@ async function saveGoogleClientId() {
 }
 
 async function handleSignInGoogle() {
-  await settingsStore.signInWithGoogle()
+  try {
+    await settingsStore.signInWithGoogle()
+  } catch {
+    // Error ya almacenado en settingsStore.syncStatus.error
+  }
+
   if (settingsStore.syncStatus.error) {
     showErrorToast('Error al conectar con Google', settingsStore.syncStatus.error)
   } else if (settingsStore.syncStatus.isSignedIn) {
@@ -146,6 +161,15 @@ async function handleSignInGoogle() {
       'Cuenta conectada',
       `Sesión iniciada como ${settingsStore.syncStatus.user?.name || 'usuario'}`,
     )
+  }
+}
+
+async function handleReconnectGoogle() {
+  const ok = await settingsStore.reconnectGoogle()
+  if (!ok && settingsStore.syncStatus.error) {
+    showErrorToast('No se pudo renovar la sesión', settingsStore.syncStatus.error)
+  } else if (ok) {
+    showSuccessToast('Sesión renovada', 'Tu conexión con Google Drive está lista por 1 hora más')
   }
 }
 
@@ -228,9 +252,11 @@ async function onJsonFileSelected(e: Event) {
 }
 
 async function handleExportToDrive() {
-  await settingsStore.exportToDrive()
-  if (settingsStore.syncStatus.error) {
-    showErrorToast('Error al exportar a Drive', settingsStore.syncStatus.error)
+  const ok = await settingsStore.exportToDrive()
+  if (!ok) {
+    if (settingsStore.syncStatus.error) {
+      showErrorToast('Error al exportar a Drive', settingsStore.syncStatus.error)
+    }
   } else {
     showSuccessToast('Exportado con éxito', 'Datos guardados en tu Google Drive')
   }
@@ -244,9 +270,11 @@ async function handleImportFromDrive() {
   )
   if (!confirmRes.isConfirmed) return
 
-  await settingsStore.importFromDrive()
-  if (settingsStore.syncStatus.error) {
-    showErrorToast('Error al importar de Drive', settingsStore.syncStatus.error)
+  const ok = await settingsStore.importFromDrive()
+  if (!ok) {
+    if (settingsStore.syncStatus.error) {
+      showErrorToast('Error al importar de Drive', settingsStore.syncStatus.error)
+    }
   } else {
     showSuccessToast('¡Datos importados!', 'Recargando aplicación...')
     setTimeout(() => window.location.reload(), 1200)
@@ -409,6 +437,24 @@ function openGithubUrl(url: string) {
               @click="handleSignOutGoogle"
             >
               <AppIcon name="lucide:log-out" :size="18" />
+            </button>
+          </div>
+
+          <!-- Aviso discreto cuando el permiso temporal de 1 hora expiró -->
+          <div
+            v-if="isOnline && !settingsStore.hasActiveGoogleToken"
+            class="text-[11px] text-slate-300 bg-dark-950/80 border border-dark-800 rounded-xl px-3 py-2 flex items-center justify-between gap-2"
+          >
+            <span class="leading-snug text-slate-400">
+              El permiso temporal (1 h) expiró. Se renovará con 1 clic al exportar o importar.
+            </span>
+            <button
+              type="button"
+              class="shrink-0 px-2.5 py-1 rounded-lg bg-green-600/15 hover:bg-green-600/25 text-green-400 border border-green-500/30 font-semibold transition-colors cursor-pointer"
+              :disabled="settingsStore.syncStatus.isSyncing"
+              @click="handleReconnectGoogle"
+            >
+              Renovar
             </button>
           </div>
 

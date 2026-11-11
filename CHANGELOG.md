@@ -1,5 +1,8 @@
 # 📋 Historial de Cambios (Changelog)
 
+## [0.23.2] - 2026-11-11
+- 🐛 fix(auth): renovar sesion de google drive bajo demanda sin popups
+
 ## [0.23.1] - 2026-11-10
 - 🐛 fix(scheme): alinear cara amarilla 2d desde d0 con vista 3d
 
